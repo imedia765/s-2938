@@ -13,15 +13,22 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const { data: members } = useQuery({
-    queryKey: ['members'],
+  const { data: members, isLoading } = useQuery({
+    queryKey: ['unassigned-members'],
     queryFn: async () => {
+      console.log('Fetching unassigned members...');
       const { data, error } = await supabase
         .from('members')
         .select('*')
-        .is('collector_id', null);
+        .is('collector', null)
+        .order('full_name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching members:', error);
+        throw error;
+      }
+      
+      console.log('Fetched members:', data);
       return data;
     }
   });
@@ -62,6 +69,14 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
         });
 
       if (createError) throw createError;
+
+      // Update the member's collector field
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ collector: member.full_name })
+        .eq('id', member.id);
+
+      if (updateError) throw updateError;
 
       toast({
         title: "Collector created",
@@ -104,27 +119,32 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
           </div>
           <ScrollArea className="h-[300px] rounded-md border p-4">
             <div className="space-y-2">
-              {filteredMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-2 hover:bg-accent rounded-md cursor-pointer"
-                  onClick={() => handleCreateCollector(member)}
-                >
-                  <div>
-                    <p className="font-medium">{member.full_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {member.member_number}
-                    </p>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    Select
-                  </Button>
-                </div>
-              ))}
-              {filteredMembers.length === 0 && (
+              {isLoading ? (
                 <div className="text-center text-muted-foreground py-4">
-                  No members found
+                  Loading members...
                 </div>
+              ) : filteredMembers.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4">
+                  No unassigned members found
+                </div>
+              ) : (
+                filteredMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-2 hover:bg-accent rounded-md cursor-pointer"
+                    onClick={() => handleCreateCollector(member)}
+                  >
+                    <div>
+                      <p className="font-medium">{member.full_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {member.member_number}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      Select
+                    </Button>
+                  </div>
+                ))
               )}
             </div>
           </ScrollArea>
