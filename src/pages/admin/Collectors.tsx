@@ -65,27 +65,19 @@ export default function Collectors() {
 
         const normalizedCollectorName = normalizeCollectorName(collector.name);
         
-        // Find all members that belong to this collector
-        const collectorMembers = membersData?.filter(member => {
-          if (!member.collector) return false;
+        // Find all members that belong to this collector and deduplicate by member_number
+        const collectorMembers = membersData?.reduce((unique: any[], member: any) => {
+          if (!member.collector) return unique;
           
           const normalizedMemberCollector = normalizeCollectorName(member.collector);
-          
           const isMatch = normalizedMemberCollector === normalizedCollectorName;
           
-          // Debug: Log each comparison
-          if (isMatch) {
-            console.log('Match found:', {
-              originalCollectorName: collector.name,
-              originalMemberCollector: member.collector,
-              normalizedCollectorName,
-              normalizedMemberCollector,
-              memberName: member.full_name
-            });
+          if (isMatch && !unique.some(m => m.member_number === member.member_number)) {
+            unique.push(member);
           }
           
-          return isMatch;
-        }) || [];
+          return unique;
+        }, []) || [];
 
         // Debug: Log collector details
         console.log(`Collector "${collector.name}":`, {
