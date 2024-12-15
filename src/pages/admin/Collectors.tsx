@@ -43,12 +43,35 @@ export default function Collectors() {
         throw membersError;
       }
 
-      // Map members to their collectors using the collector column
+      // Helper function to normalize collector names for comparison
+      const normalizeCollectorName = (name: string) => {
+        if (!name) return '';
+        return name.toLowerCase()
+          .replace(/[\/&,.-]/g, '') // Remove special characters
+          .replace(/\s+/g, '')      // Remove all whitespace
+          .trim();
+      };
+
+      // Map members to their collectors using normalized name matching
       const enhancedCollectorsData = collectorsData.map(collector => {
-        // Find all members where collector name matches exactly
-        const collectorMembers = membersData.filter(member => 
-          member.collector && member.collector.trim() === collector.name.trim()
-        );
+        // Find all members where collector name matches after normalization
+        const collectorMembers = membersData.filter(member => {
+          if (!member.collector) return false;
+          
+          const normalizedCollectorName = normalizeCollectorName(collector.name);
+          const normalizedMemberCollector = normalizeCollectorName(member.collector);
+          
+          // Log matching attempts for debugging
+          console.log('Matching attempt:', {
+            collectorName: collector.name,
+            memberCollector: member.collector,
+            normalizedCollector: normalizedCollectorName,
+            normalizedMember: normalizedMemberCollector,
+            isMatch: normalizedCollectorName === normalizedMemberCollector
+          });
+          
+          return normalizedCollectorName === normalizedMemberCollector;
+        });
 
         console.log(`Collector "${collector.name}":`, {
           memberCount: collectorMembers.length,
