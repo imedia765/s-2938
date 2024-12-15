@@ -32,7 +32,7 @@ export default function Collectors() {
         throw collectorsError;
       }
 
-      // Then, get all members with their collector names
+      // Then, get all members
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
@@ -43,45 +43,14 @@ export default function Collectors() {
         throw membersError;
       }
 
-      // Debug: Log all unique collector names from members table
-      const uniqueCollectorNames = [...new Set(membersData.map(m => m.collector).filter(Boolean))];
-      console.log('Unique collector names in members table:', uniqueCollectorNames);
-
-      // Debug: Log all collector names from collectors table
-      console.log('Collectors in collectors table:', collectorsData.map(c => c.name));
-
-      // Map members to their collectors using exact collector name matching
+      // Map members to their collectors using the collector column
       const enhancedCollectorsData = collectorsData.map(collector => {
-        // Function to normalize collector names for comparison
-        const normalizeCollectorName = (name: string) => {
-          if (!name) return '';
-          return name.toLowerCase()
-            .replace(/[\/&,.-]/g, ' ')  // Replace special characters with spaces
-            .split(/\s+/)               // Split on whitespace
-            .filter(part => part)       // Remove empty parts
-            .join(' ')                  // Join back together with spaces
-            .trim();                    // Remove any trailing whitespace
-        };
+        // Find all members where collector name matches exactly
+        const collectorMembers = membersData.filter(member => 
+          member.collector && member.collector.trim() === collector.name.trim()
+        );
 
-        const normalizedCollectorName = normalizeCollectorName(collector.name);
-        
-        // Find all members that belong to this collector and deduplicate by member_number
-        const collectorMembers = membersData?.reduce((unique: any[], member: any) => {
-          if (!member.collector) return unique;
-          
-          const normalizedMemberCollector = normalizeCollectorName(member.collector);
-          const isMatch = normalizedMemberCollector === normalizedCollectorName;
-          
-          if (isMatch && !unique.some(m => m.member_number === member.member_number)) {
-            unique.push(member);
-          }
-          
-          return unique;
-        }, []) || [];
-
-        // Debug: Log collector details
         console.log(`Collector "${collector.name}":`, {
-          normalizedName: normalizedCollectorName,
           memberCount: collectorMembers.length,
           members: collectorMembers.map(m => ({
             id: m.id,
