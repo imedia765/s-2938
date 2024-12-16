@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Icons } from "@/components/ui/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { LoginTabs } from "@/components/auth/LoginTabs";
-import { getMemberByMemberId, verifyMemberPassword } from "@/utils/memberAuth";
+import { getMemberByMemberId } from "@/utils/memberAuth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,32 +16,34 @@ export default function Login() {
 
   useEffect(() => {
     console.log("Login component mounted - checking session");
-    const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log("Session check result:", { session, error });
-      if (session) {
-        console.log("Active session found, redirecting to admin");
-        navigate("/admin");
-      }
-    };
-    
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", { event, session });
-      if (event === "SIGNED_IN" && session) {
-        console.log("Sign in event detected");
-        checkPasswordChangeRequired(session.user.email);
-      } else if (event === "SIGNED_OUT") {
-        setIsLoggedIn(false);
-      }
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
       console.log("Cleaning up auth subscription");
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  const checkSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log("Session check result:", { session, error });
+    if (session) {
+      console.log("Active session found, redirecting to admin");
+      navigate("/admin");
+    }
+  };
+
+  const handleAuthChange = async (event: string, session: any) => {
+    console.log("Auth state changed:", { event, session });
+    if (event === "SIGNED_IN" && session) {
+      console.log("Sign in event detected");
+      checkPasswordChangeRequired(session.user.email);
+    } else if (event === "SIGNED_OUT") {
+      setIsLoggedIn(false);
+    }
+  };
 
   const checkPasswordChangeRequired = async (email: string | undefined) => {
     if (!email) return;
@@ -101,7 +103,6 @@ export default function Login() {
     try {
       const formData = new FormData(e.currentTarget);
       const memberId = (formData.get("memberId") as string).trim().toUpperCase();
-      const password = formData.get("memberPassword") as string;
 
       console.log("Looking up member with ID:", memberId);
       const member = await getMemberByMemberId(memberId);
@@ -111,29 +112,24 @@ export default function Login() {
         throw new Error("Member ID not found");
       }
 
-      // Verify the password against the stored hash
-      const isPasswordValid = await verifyMemberPassword(password, member.default_password_hash);
-      if (!isPasswordValid) {
-        throw new Error("Invalid password");
-      }
-
+      // For first-time login, use the member ID as the password
       console.log("Attempting login with member's email");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: member.email,
-        password,
+        password: memberId, // Using member ID as password for first login
       });
 
       if (error) throw error;
 
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: "Welcome! Please change your password.",
       });
     } catch (error) {
       console.error("Member ID login error:", error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid member ID or password",
+        description: error instanceof Error ? error.message : "Invalid member ID",
         variant: "destructive",
       });
     } finally {
