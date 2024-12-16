@@ -9,10 +9,15 @@ interface MemberIdLoginFormProps {
 
 export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProps) => {
   const [memberId, setMemberId] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Submitting member ID:", memberId.toUpperCase().trim());
+    const cleanMemberId = memberId.toUpperCase().trim();
+    console.log("Login attempt with:", {
+      memberId: cleanMemberId,
+      passwordLength: password.length
+    });
     await onSubmit(e);
   };
 
@@ -36,7 +41,9 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
           id="memberPassword"
           name="memberPassword"
           type="password"
-          placeholder="Password"
+          placeholder="Password (same as Member ID)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           required
           disabled={isLoading}
         />
@@ -44,6 +51,9 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Logging in..." : "Login with Member ID"}
       </Button>
+      <p className="text-sm text-muted-foreground text-center">
+        Use your Member ID (e.g. TM20001) as both username and password
+      </p>
     </form>
   );
 };
