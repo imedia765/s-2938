@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { NoticeHistory } from "./NoticeHistory";
 import { MemberSelection } from "./MemberSelection";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Notice {
   id: string;
@@ -18,9 +19,10 @@ export interface Notice {
 export function NoticesSection() {
   const [noticeMessage, setNoticeMessage] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
-  const handleSendNotice = () => {
+  const handleSendNotice = async () => {
     if (!noticeMessage.trim()) {
       toast({
         title: "Error",
@@ -39,12 +41,42 @@ export function NoticesSection() {
       return;
     }
 
-    toast({
-      title: "Notice Sent",
-      description: `Notice sent to ${selectedMembers.length} recipients`,
-    });
-    setNoticeMessage("");
-    setSelectedMembers([]);
+    setIsSending(true);
+    try {
+      // Create notices for each selected member
+      const notices = selectedMembers.map(memberId => ({
+        member_id: memberId,
+        subject: noticeMessage.substring(0, 50) + (noticeMessage.length > 50 ? "..." : ""),
+        description: noticeMessage,
+        status: 'notice',
+        priority: 'medium',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('support_tickets')
+        .insert(notices);
+
+      if (error) throw error;
+
+      toast({
+        title: "Notice Sent",
+        description: `Notice sent to ${selectedMembers.length} recipients`,
+      });
+      
+      setNoticeMessage("");
+      setSelectedMembers([]);
+    } catch (error) {
+      console.error('Error sending notice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send notice. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -70,9 +102,10 @@ export function NoticesSection() {
           <Button 
             onClick={handleSendNotice}
             className="w-full sm:w-auto"
+            disabled={isSending}
           >
             <Send className="mr-2 h-4 w-4" />
-            Send Notice
+            {isSending ? "Sending..." : "Send Notice"}
           </Button>
           <NoticeHistory />
         </div>
