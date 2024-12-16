@@ -85,49 +85,81 @@ export async function restoreDatabase(backupFile: File) {
       adminNotes: 'admin_notes'
     };
 
+    // Process collectors first to ensure they exist for member references
+    if (backupData.collectors && Array.isArray(backupData.collectors)) {
+      const { error: deleteCollectorsError } = await supabase
+        .from('collectors')
+        .delete()
+        .filter('id', 'not.is', null);
+
+      if (deleteCollectorsError) throw deleteCollectorsError;
+
+      // Process collectors in batches
+      const batchSize = 50;
+      for (let i = 0; i < backupData.collectors.length; i += batchSize) {
+        const batch = backupData.collectors
+          .slice(i, Math.min(i + batchSize, backupData.collectors.length))
+          .map(({ id, ...rest }) => ({
+            ...rest,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+
+        const { error } = await supabase
+          .from('collectors')
+          .insert(batch);
+
+        if (error) throw error;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Process other tables
     for (const [key, table] of Object.entries(tableMap)) {
-      const data = backupData[key];
+      if (key === 'collectors') continue; // Skip collectors as we've already processed them
       
-      if (Array.isArray(data)) {
-        // Delete all existing records from the table
-        const { error: deleteError } = await supabase
-          .from(table)
-          .delete()
-          .filter('id', 'not.is', null);
+      const data = backupData[key];
+      if (!Array.isArray(data)) continue;
 
-        if (deleteError) {
-          console.error(`Error clearing ${table}:`, deleteError);
-          throw deleteError;
-        }
+      console.log(`Processing ${table}...`);
 
-        // Wait a short moment to ensure deletion is complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Delete existing records
+      const { error: deleteError } = await supabase
+        .from(table)
+        .delete()
+        .filter('id', 'not.is', null);
 
-        if (data.length > 0) {
-          // Process records in smaller batches to avoid overwhelming the database
-          const batchSize = 50;
-          for (let i = 0; i < data.length; i += batchSize) {
-            const batch = data.slice(i, Math.min(i + batchSize, data.length));
-            
-            // Remove ids from records to let Supabase generate new ones
-            const processedBatch = batch.map(({ id, ...rest }) => ({
-              ...rest,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }));
+      if (deleteError) {
+        console.error(`Error clearing ${table}:`, deleteError);
+        throw deleteError;
+      }
 
-            const { error: insertError } = await supabase
-              .from(table)
-              .insert(processedBatch);
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-            if (insertError) {
-              console.error(`Error restoring ${table}:`, insertError);
-              throw insertError;
-            }
+      if (data.length > 0) {
+        const batchSize = 50;
+        for (let i = 0; i < data.length; i += batchSize) {
+          const batch = data.slice(i, Math.min(i + batchSize, data.length));
+          
+          // Special handling for members to avoid member_number conflicts
+          const processedBatch = batch.map(({ id, member_number, ...rest }) => ({
+            ...rest,
+            // For members table, don't include member_number to let trigger generate new ones
+            ...(table !== 'members' && { member_number }),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
 
-            // Add a small delay between batches
-            await new Promise(resolve => setTimeout(resolve, 100));
+          const { error: insertError } = await supabase
+            .from(table)
+            .insert(processedBatch);
+
+          if (insertError) {
+            console.error(`Error restoring ${table}:`, insertError);
+            throw insertError;
           }
+
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
     }
@@ -156,7 +188,6 @@ export async function getDatabaseStatus() {
       details: logs[0].details
     } : null;
 
-    // Get total size of database (approximate based on row counts)
     const tableSizes = await Promise.all(
       TABLES.map(async (table) => {
         const { count, error } = await supabase
