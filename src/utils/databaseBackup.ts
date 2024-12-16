@@ -88,10 +88,11 @@ export async function restoreDatabase(backupFile: File) {
       const data = backupData[key];
       
       if (Array.isArray(data)) {
+        // Delete all existing records from the table
         const { error: deleteError } = await supabase
           .from(table)
           .delete()
-          .neq('id', 'placeholder');
+          .filter('id', 'not.is', null); // Changed from neq.placeholder to not.is null
 
         if (deleteError) {
           console.error(`Error clearing ${table}:`, deleteError);
