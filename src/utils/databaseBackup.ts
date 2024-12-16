@@ -65,6 +65,20 @@ export async function exportDatabase() {
   }
 }
 
+async function getNextCollectorNumber(): Promise<string> {
+  const { data: collectors } = await supabase
+    .from('collectors')
+    .select('number')
+    .order('number', { ascending: false })
+    .limit(1);
+
+  const nextNumber = collectors && collectors.length > 0
+    ? String(Number(collectors[0].number) + 1).padStart(2, '0')
+    : '01';
+    
+  return nextNumber;
+}
+
 export async function restoreDatabase(backupFile: File) {
   try {
     const fileContent = await backupFile.text();
@@ -85,7 +99,7 @@ export async function restoreDatabase(backupFile: File) {
       adminNotes: 'admin_notes'
     };
 
-    // Process collectors first to ensure they exist for member references
+    // Process collectors first
     if (backupData.collectors && Array.isArray(backupData.collectors)) {
       const { error: deleteCollectorsError } = await supabase
         .from('collectors')
@@ -96,14 +110,29 @@ export async function restoreDatabase(backupFile: File) {
 
       // Process collectors in batches
       const batchSize = 50;
+      let currentNumber = 1;
+      
       for (let i = 0; i < backupData.collectors.length; i += batchSize) {
         const batch = backupData.collectors
           .slice(i, Math.min(i + batchSize, backupData.collectors.length))
-          .map(({ id, ...rest }) => ({
-            ...rest,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }));
+          .map(({ id, ...collector }) => {
+            // Generate new prefix from name
+            const prefix = collector.name
+              .split(/\s+/)
+              .map(word => word.charAt(0).toUpperCase())
+              .join('');
+            
+            // Assign new sequential number
+            const number = String(currentNumber++).padStart(2, '0');
+            
+            return {
+              ...collector,
+              prefix,
+              number,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+          });
 
         const { error } = await supabase
           .from('collectors')
@@ -116,14 +145,13 @@ export async function restoreDatabase(backupFile: File) {
 
     // Process other tables
     for (const [key, table] of Object.entries(tableMap)) {
-      if (key === 'collectors') continue; // Skip collectors as we've already processed them
+      if (key === 'collectors') continue;
       
       const data = backupData[key];
       if (!Array.isArray(data)) continue;
 
       console.log(`Processing ${table}...`);
 
-      // Delete existing records
       const { error: deleteError } = await supabase
         .from(table)
         .delete()
@@ -141,10 +169,8 @@ export async function restoreDatabase(backupFile: File) {
         for (let i = 0; i < data.length; i += batchSize) {
           const batch = data.slice(i, Math.min(i + batchSize, data.length));
           
-          // Special handling for members to avoid member_number conflicts
           const processedBatch = batch.map(({ id, member_number, ...rest }) => ({
             ...rest,
-            // For members table, don't include member_number to let trigger generate new ones
             ...(table !== 'members' && { member_number }),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
