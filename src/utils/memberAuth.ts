@@ -23,8 +23,7 @@ export async function getMemberByMemberId(memberId: string) {
   const { data, error } = await supabase
     .from('members')
     .select('*')
-    .eq('member_number', memberId.toUpperCase().trim())
-    .single();
+    .eq('member_number', memberId.toUpperCase().trim());
 
   if (error) {
     console.error("Database error when looking up member:", error);
@@ -33,12 +32,13 @@ export async function getMemberByMemberId(memberId: string) {
 
   console.log("Member lookup result:", { data });
   
-  if (!data) {
+  if (!data || data.length === 0) {
     console.log("No member found with member_number:", memberId);
     return null;
   }
   
-  return data;
+  // Return the first matching member
+  return data[0];
 }
 
 export async function verifyMemberPassword(password: string, storedHash: string | null) {
