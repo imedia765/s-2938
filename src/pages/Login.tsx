@@ -31,7 +31,7 @@ export default function Login() {
       console.log("Auth state changed:", { event, session });
       if (event === "SIGNED_IN" && session) {
         console.log("Sign in event detected");
-        checkPasswordChangeRequired(session.user.email);
+        handleSuccessfulLogin();
       } else if (event === "SIGNED_OUT") {
         setIsLoggedIn(false);
       }
@@ -43,23 +43,34 @@ export default function Login() {
     };
   }, [navigate]);
 
-  const checkPasswordChangeRequired = async (email: string | undefined) => {
-    if (!email) return;
+  const handleSuccessfulLogin = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return;
 
-    const { data: member, error } = await supabase
-      .from('members')
-      .select('password_changed')
-      .eq('email', email)
-      .single();
+      const { data: member, error } = await supabase
+        .from('members')
+        .select('password_changed')
+        .eq('email', user.email)
+        .maybeSingle(); // Use maybeSingle() instead of single()
 
-    if (error) {
-      console.error("Error checking password status:", error);
-      return;
-    }
+      if (error) {
+        console.error("Error checking password status:", error);
+        // If there's an error, redirect to admin as fallback
+        navigate("/admin");
+        return;
+      }
 
-    if (member && !member.password_changed) {
-      navigate("/change-password");
-    } else {
+      // If member exists and hasn't changed password, redirect to change password
+      if (member && !member.password_changed) {
+        navigate("/change-password");
+      } else {
+        // If no member record or password already changed, go to admin
+        navigate("/admin");
+      }
+    } catch (error) {
+      console.error("Error in handleSuccessfulLogin:", error);
+      // If there's an error, redirect to admin as fallback
       navigate("/admin");
     }
   };
