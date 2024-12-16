@@ -2,14 +2,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { saveAs } from 'file-saver';
 
 const TABLES = [
-  'members',
-  'collectors',
+  'ticket_responses',
+  'support_tickets',
+  'registrations',
   'payments',
   'family_members',
-  'registrations',
-  'support_tickets',
-  'ticket_responses',
-  'admin_notes'
+  'admin_notes',
+  'members',
+  'collectors',
+  'profiles'
 ] as const;
 
 type TableName = typeof TABLES[number];
@@ -92,21 +93,40 @@ export async function restoreDatabase(backupFile: File) {
         const { error: deleteError } = await supabase
           .from(table)
           .delete()
-          .filter('id', 'not.is', null); // Changed from neq.placeholder to not.is null
+          .filter('id', 'not.is', null);
 
         if (deleteError) {
           console.error(`Error clearing ${table}:`, deleteError);
           throw deleteError;
         }
 
-        if (data.length > 0) {
-          const { error: insertError } = await supabase
-            .from(table)
-            .insert(data);
+        // Wait a short moment to ensure deletion is complete
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-          if (insertError) {
-            console.error(`Error restoring ${table}:`, insertError);
-            throw insertError;
+        if (data.length > 0) {
+          // Process records in smaller batches to avoid overwhelming the database
+          const batchSize = 50;
+          for (let i = 0; i < data.length; i += batchSize) {
+            const batch = data.slice(i, Math.min(i + batchSize, data.length));
+            
+            // Remove ids from records to let Supabase generate new ones
+            const processedBatch = batch.map(({ id, ...rest }) => ({
+              ...rest,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+
+            const { error: insertError } = await supabase
+              .from(table)
+              .insert(processedBatch);
+
+            if (insertError) {
+              console.error(`Error restoring ${table}:`, insertError);
+              throw insertError;
+            }
+
+            // Add a small delay between batches
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       }
@@ -149,8 +169,7 @@ export async function getDatabaseStatus() {
     );
 
     const totalRows = tableSizes.reduce((acc, curr) => acc + curr, 0);
-    // Rough estimate of size based on row count (just for display purposes)
-    const estimatedSize = Math.round(totalRows * 0.5); // Assuming average 0.5KB per row
+    const estimatedSize = Math.round(totalRows * 0.5);
 
     return {
       lastAction,
