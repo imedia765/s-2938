@@ -7,6 +7,7 @@ import { useState } from "react";
 import { NoticeHistory } from "./NoticeHistory";
 import { MemberSelection } from "./MemberSelection";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export interface Notice {
   id: string;
@@ -21,6 +22,23 @@ export function NoticesSection() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+
+  // Get the current user's profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      return profile;
+    },
+  });
 
   const handleSendNotice = async () => {
     if (!noticeMessage.trim()) {
@@ -41,6 +59,15 @@ export function NoticesSection() {
       return;
     }
 
+    if (!profile) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to send notices",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSending(true);
     try {
       // Create notices for each selected member
@@ -50,8 +77,6 @@ export function NoticesSection() {
         description: noticeMessage,
         status: 'notice',
         priority: 'medium',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
       }));
 
       const { error } = await supabase
@@ -102,7 +127,7 @@ export function NoticesSection() {
           <Button 
             onClick={handleSendNotice}
             className="w-full sm:w-auto"
-            disabled={isSending}
+            disabled={isSending || !profile}
           >
             <Send className="mr-2 h-4 w-4" />
             {isSending ? "Sending..." : "Send Notice"}
