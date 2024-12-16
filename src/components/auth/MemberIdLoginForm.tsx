@@ -12,7 +12,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Submitting member ID:", memberId);
+    console.log("Submitting member ID:", memberId.toUpperCase().trim());
     await onSubmit(e);
   };
 
@@ -23,9 +23,9 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
           id="memberId"
           name="memberId"
           type="text"
-          placeholder="Member ID"
+          placeholder="Member ID (e.g. TM20001)"
           value={memberId}
-          onChange={(e) => setMemberId(e.target.value.trim())}
+          onChange={(e) => setMemberId(e.target.value.toUpperCase().trim())}
           required
           disabled={isLoading}
           className="uppercase"

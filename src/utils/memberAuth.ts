@@ -10,21 +10,21 @@ export async function getMemberByMemberId(memberId: string) {
   
   console.log("Database connection check:", { tableInfo, tableError });
   
-  // Get all members to verify data
+  // Get all members to verify data is accessible
   const { data: allMembers, error: membersError } = await supabase
     .from('members')
-    .select('member_number, full_name')
+    .select('member_number, full_name, email')
     .limit(10);
     
-  console.log("All members in database (limited to 10):", allMembers);
+  console.log("Sample of members in database:", allMembers);
   console.log("Members query error if any:", membersError);
   
-  // Now try to find the specific member
+  // Now try to find the specific member with exact match
   const { data, error } = await supabase
     .from('members')
     .select('*')
-    .eq('member_number', memberId.trim())
-    .maybeSingle();
+    .eq('member_number', memberId.toUpperCase().trim())
+    .single();
 
   if (error) {
     console.error("Database error when looking up member:", error);
