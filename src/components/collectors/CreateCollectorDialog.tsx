@@ -14,13 +14,12 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
   const { toast } = useToast();
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ['unassigned-members'],
+    queryKey: ['all-members'],
     queryFn: async () => {
-      console.log('Fetching unassigned members...');
+      console.log('Fetching all members...');
       const { data, error } = await supabase
         .from('members')
         .select('*')
-        .is('collector', null)
         .order('full_name');
       
       if (error) {
@@ -35,7 +34,8 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
 
   const filteredMembers = members?.filter(member =>
     member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.member_number.toLowerCase().includes(searchTerm.toLowerCase())
+    member.member_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (member.collector && member.collector.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
   const handleCreateCollector = async (member: any) => {
@@ -125,7 +125,7 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
                 </div>
               ) : filteredMembers.length === 0 ? (
                 <div className="text-center text-muted-foreground py-4">
-                  No unassigned members found
+                  No members found
                 </div>
               ) : (
                 filteredMembers.map((member) => (
@@ -138,6 +138,11 @@ export function CreateCollectorDialog({ onUpdate }: { onUpdate: () => void }) {
                       <p className="font-medium">{member.full_name}</p>
                       <p className="text-sm text-muted-foreground">
                         {member.member_number}
+                        {member.collector && (
+                          <span className="ml-2 text-yellow-500">
+                            Current Collector: {member.collector}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <Button variant="ghost" size="sm">
