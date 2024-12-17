@@ -4,19 +4,20 @@ export async function getMemberByMemberId(memberId: string) {
   console.log("Looking up member with member_number:", memberId);
   
   try {
-    const { data, error } = await supabase
+    const { data: members, error } = await supabase
       .from('members')
       .select('*')
       .eq('member_number', memberId.toUpperCase().trim())
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
       console.error("Database error when looking up member:", error);
       throw error;
     }
 
-    console.log("Member lookup result:", data);
-    return data;
+    const member = members?.[0] || null;
+    console.log("Member lookup result:", member);
+    return member;
   } catch (error) {
     console.error("Error in getMemberByMemberId:", error);
     return null;

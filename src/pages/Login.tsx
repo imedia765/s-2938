@@ -51,9 +51,12 @@ export default function Login() {
       console.log("Looking up member with ID:", memberId);
       const member = await getMemberByMemberId(memberId);
 
-      if (!member || !member.email) {
-        console.log("Member lookup result:", member);
-        throw new Error("Member ID not found or no email associated");
+      if (!member) {
+        throw new Error("Member ID not found. Please check your Member ID and try again.");
+      }
+
+      if (!member.email) {
+        throw new Error("No email associated with this Member ID. Please contact support.");
       }
 
       // For development, we'll use the member number as the password
@@ -62,7 +65,12 @@ export default function Login() {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error("Invalid Member ID or password. Please try again.");
+        }
+        throw error;
+      }
     } catch (error) {
       console.error("Member ID login error:", error);
       toast({
