@@ -162,6 +162,7 @@ export type Database = {
           date_of_birth: string | null
           default_password_hash: string | null
           email: string | null
+          email_verified: boolean | null
           full_name: string
           gender: string | null
           id: string
@@ -171,6 +172,7 @@ export type Database = {
           password_changed: boolean | null
           phone: string | null
           postcode: string | null
+          profile_updated: boolean | null
           status: string | null
           town: string | null
           updated_at: string
@@ -185,6 +187,7 @@ export type Database = {
           date_of_birth?: string | null
           default_password_hash?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name: string
           gender?: string | null
           id?: string
@@ -194,6 +197,7 @@ export type Database = {
           password_changed?: boolean | null
           phone?: string | null
           postcode?: string | null
+          profile_updated?: boolean | null
           status?: string | null
           town?: string | null
           updated_at?: string
@@ -208,6 +212,7 @@ export type Database = {
           date_of_birth?: string | null
           default_password_hash?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string
           gender?: string | null
           id?: string
@@ -217,6 +222,7 @@ export type Database = {
           password_changed?: boolean | null
           phone?: string | null
           postcode?: string | null
+          profile_updated?: boolean | null
           status?: string | null
           town?: string | null
           updated_at?: string

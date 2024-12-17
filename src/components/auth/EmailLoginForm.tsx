@@ -3,9 +3,10 @@ import { Input } from "@/components/ui/input";
 
 interface EmailLoginFormProps {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export const EmailLoginForm = ({ onSubmit }: EmailLoginFormProps) => {
+export const EmailLoginForm = ({ onSubmit, isLoading }: EmailLoginFormProps) => {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -15,6 +16,7 @@ export const EmailLoginForm = ({ onSubmit }: EmailLoginFormProps) => {
           type="email"
           placeholder="Email"
           required
+          disabled={isLoading}
         />
       </div>
       <div className="space-y-2">
@@ -24,10 +26,11 @@ export const EmailLoginForm = ({ onSubmit }: EmailLoginFormProps) => {
           type="password"
           placeholder="Password"
           required
+          disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full">
-        Login with Email
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Logging in..." : "Login with Email"}
       </Button>
     </form>
   );

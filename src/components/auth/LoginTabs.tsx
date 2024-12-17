@@ -5,9 +5,10 @@ import { MemberIdLoginForm } from "./MemberIdLoginForm";
 interface LoginTabsProps {
   onEmailSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onMemberIdSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export const LoginTabs = ({ onEmailSubmit, onMemberIdSubmit }: LoginTabsProps) => {
+export const LoginTabs = ({ onEmailSubmit, onMemberIdSubmit, isLoading }: LoginTabsProps) => {
   return (
     <Tabs defaultValue="email" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -16,11 +17,11 @@ export const LoginTabs = ({ onEmailSubmit, onMemberIdSubmit }: LoginTabsProps) =
       </TabsList>
 
       <TabsContent value="email">
-        <EmailLoginForm onSubmit={onEmailSubmit} />
+        <EmailLoginForm onSubmit={onEmailSubmit} isLoading={isLoading} />
       </TabsContent>
 
       <TabsContent value="memberId">
-        <MemberIdLoginForm onSubmit={onMemberIdSubmit} />
+        <MemberIdLoginForm onSubmit={onMemberIdSubmit} isLoading={isLoading} />
       </TabsContent>
     </Tabs>
   );
