@@ -51,6 +51,8 @@ export default function Login() {
       console.log("Looking up member with ID:", memberId);
       const member = await getMemberByMemberId(memberId);
 
+      console.log("Member lookup complete:", member);
+
       if (!member) {
         throw new Error("Member ID not found. Please check your Member ID and try again.");
       }
@@ -59,6 +61,8 @@ export default function Login() {
         throw new Error("No email associated with this Member ID. Please contact support.");
       }
 
+      console.log("Attempting Supabase auth with email:", member.email);
+
       // For development, we'll use the member number as the password
       const { error } = await supabase.auth.signInWithPassword({
         email: member.email,
@@ -66,11 +70,14 @@ export default function Login() {
       });
 
       if (error) {
+        console.error("Supabase auth error:", error);
         if (error.message.includes('Invalid login credentials')) {
           throw new Error("Invalid Member ID or password. Please try again.");
         }
         throw error;
       }
+
+      console.log("Login successful");
     } catch (error) {
       console.error("Member ID login error:", error);
       toast({
