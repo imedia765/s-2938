@@ -3,8 +3,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
 
 interface MembershipSectionProps {
   onCollectorChange?: (collectorId: string) => void;
@@ -31,6 +29,7 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
       console.log("Fetched collectors:", data);
       if (data && data.length > 0) {
         setCollectors(data);
+        // Only set default collector if none is selected
         if (!selectedCollector) {
           setSelectedCollector(data[0].id);
           onCollectorChange?.(data[0].id);
@@ -41,7 +40,7 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
     };
 
     fetchCollectors();
-  }, []);
+  }, []); // Empty dependency array since we only want to fetch once
 
   const handleCollectorChange = (value: string) => {
     console.log("Selected collector:", value);
@@ -50,28 +49,24 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
   };
 
   return (
-    <div className="space-y-6 bg-gray-900 p-6 rounded-lg">
-      <h3 className="text-2xl font-semibold text-white">Membership Information</h3>
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Membership Information</h3>
       
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="collector" className="text-white">Select Collector</Label>
+          <Label htmlFor="collector">Select Collector</Label>
           <Select value={selectedCollector} onValueChange={handleCollectorChange}>
-            <SelectTrigger id="collector" className="w-full bg-gray-800 text-white border-gray-700">
+            <SelectTrigger id="collector" className="w-full">
               <SelectValue placeholder="Select a collector" />
             </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
+            <SelectContent>
               {collectors.length === 0 ? (
                 <SelectItem value="no-collectors" disabled>
                   No active collectors available
                 </SelectItem>
               ) : (
                 collectors.map((collector) => (
-                  <SelectItem 
-                    key={collector.id} 
-                    value={collector.id}
-                    className="text-white hover:bg-gray-700"
-                  >
+                  <SelectItem key={collector.id} value={collector.id}>
                     {collector.name}
                   </SelectItem>
                 ))
@@ -80,32 +75,21 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
           </Select>
         </div>
 
-        <Alert className="bg-blue-900/20 border-blue-800">
-          <InfoIcon className="h-5 w-5 text-blue-400" />
-          <AlertDescription className="text-white">
-            <h4 className="font-medium text-lg mb-2">Membership Fee Structure</h4>
-            <ul className="space-y-1 text-gray-200">
-              <li>Registration fee: £150</li>
-              <li>Annual fee: £40 (collected £20 in January and £20 in June)</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
+        <div className="space-y-2">
+          <h4 className="font-medium">Membership Fee</h4>
+          <p>Registration fee: £150</p>
+          <p>Annual fee: £40 (collected £20 in January and £20 in June)</p>
+        </div>
 
         <div className="flex items-center space-x-2">
-          <Checkbox id="giftAid" className="border-gray-600 data-[state=checked]:bg-blue-600" />
-          <label htmlFor="giftAid" className="text-white">
-            I am eligible for Gift Aid
-          </label>
+          <Checkbox id="giftAid" />
+          <label htmlFor="giftAid">I am eligible for Gift Aid</label>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-start space-x-2">
-            <Checkbox 
-              id="terms" 
-              required 
-              className="mt-1 border-gray-600 data-[state=checked]:bg-blue-600"
-            />
-            <label htmlFor="terms" className="text-sm text-gray-200">
+            <Checkbox id="terms" required />
+            <label htmlFor="terms" className="text-sm">
               I/We Hereby confirm the above details provided are genuine and valid. I/We also understand
               that submitting an application or making payment does not obligate PWA Burton On Trent to
               grant Membership. Membership will only be approved once all criteria are met, Supporting

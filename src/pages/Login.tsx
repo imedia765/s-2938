@@ -50,6 +50,7 @@ export default function Login() {
     try {
       console.log("Looking up member with ID:", memberId);
       const member = await getMemberByMemberId(memberId);
+
       console.log("Member lookup complete:", member);
 
       if (!member) {
@@ -60,33 +61,19 @@ export default function Login() {
         throw new Error("No email associated with this Member ID. Please contact support.");
       }
 
-      // For member ID login, we use the member's default password hash
-      // This is stored when the member is created
-      if (!member.default_password_hash) {
-        throw new Error("No default password set. Please contact support.");
-      }
-
-      // Hash the provided password to compare with stored hash
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const providedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-      // Compare the hashes
-      if (providedHash !== member.default_password_hash) {
-        throw new Error("Invalid Member ID or password. Please try again.");
-      }
-
-      // If password matches, sign in with the member's email
       console.log("Attempting Supabase auth with email:", member.email);
+
+      // For development, we'll use the member number as the password
       const { error } = await supabase.auth.signInWithPassword({
         email: member.email,
-        password: memberId, // Use member ID as password for Supabase auth
+        password,
       });
 
       if (error) {
         console.error("Supabase auth error:", error);
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error("Invalid Member ID or password. Please try again.");
+        }
         throw error;
       }
 
