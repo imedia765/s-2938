@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { useState } from "react";
 
 interface MemberIdLoginFormProps {
@@ -14,10 +14,17 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const cleanMemberId = memberId.toUpperCase().trim();
+    
+    // Create a FormData object with both member ID and password
+    const formData = new FormData();
+    formData.set('memberId', cleanMemberId);
+    formData.set('password', password);
+    
     console.log("Login attempt with:", {
       memberId: cleanMemberId,
-      passwordLength: password.length
+      hasPassword: !!password
     });
+    
     await onSubmit(e);
   };
 
@@ -38,10 +45,10 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
       </div>
       <div className="space-y-2">
         <Input
-          id="memberPassword"
-          name="memberPassword"
+          id="password"
+          name="password"
           type="password"
-          placeholder="Password (same as Member ID)"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -52,7 +59,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
         {isLoading ? "Logging in..." : "Login with Member ID"}
       </Button>
       <p className="text-sm text-muted-foreground text-center">
-        Use your Member ID (e.g. TM20001) as both username and password
+        First time? Use your Member ID as your password
       </p>
     </form>
   );
