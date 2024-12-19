@@ -42,30 +42,44 @@ export default function FirstTimeLogin() {
         throw new Error("For first-time login, your password should be the same as your Member ID.");
       }
 
-      // Get the temporary email
-      const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
+      // Use a more standard temporary email domain
+      const tempEmail = `${cleanMemberId.toLowerCase()}@temporary.org`;
       console.log("Attempting login with:", { email: tempEmail, memberId: cleanMemberId });
 
-      // First try to sign up the user if they don't exist
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: tempEmail,
-        password: cleanMemberId,
-        options: {
-          data: {
-            member_number: cleanMemberId
-          }
-        }
-      });
-
-      // If sign up fails (user might already exist), try to sign in
+      // Try to sign in first
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: tempEmail,
         password: cleanMemberId
       });
 
+      // If sign in fails, try to sign up
       if (signInError) {
-        console.error("Sign in error:", signInError);
-        throw signInError;
+        console.log("Sign in failed, attempting signup");
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: tempEmail,
+          password: cleanMemberId,
+          options: {
+            data: {
+              member_number: cleanMemberId
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error("Sign up error:", signUpError);
+          throw signUpError;
+        }
+
+        // Try signing in again after successful signup
+        const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+          email: tempEmail,
+          password: cleanMemberId
+        });
+
+        if (finalSignInError) {
+          console.error("Final sign in error:", finalSignInError);
+          throw finalSignInError;
+        }
       }
 
       toast({
