@@ -8,58 +8,54 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-export default function Login() {
+export default function FirstTimeLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [identifier, setIdentifier] = useState('');
+  const [memberId, setMemberId] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFirstTimeLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log("Login attempt with:", { identifier });
+    console.log("First time login attempt with member ID:", memberId);
 
     try {
-      // Check if input is an email or member ID
-      const isEmail = identifier.includes('@') && !identifier.includes('@temp.pwaburton.org');
-      
-      if (isEmail) {
-        // Check if member has updated their password
-        const { data: member } = await supabase
-          .from('members')
-          .select('password_changed, email_verified')
-          .eq('email', identifier)
-          .single();
+      // First, get the member details
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('email, password_changed')
+        .eq('member_number', memberId.toUpperCase())
+        .single();
 
-        if (!member?.password_changed) {
-          toast({
-            title: "Password not updated",
-            description: "Please use the 'First Time Login' button below if you haven't changed your password yet.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
+      if (memberError || !member) {
+        throw new Error("Invalid Member ID. Please check your credentials and try again.");
       }
 
-      // Attempt login
-      const { error } = await supabase.auth.signInWithPassword({
-        email: isEmail ? identifier : `${identifier}@temp.pwaburton.org`,
+      if (member.password_changed) {
+        throw new Error("This member has already updated their password. Please use the regular login page.");
+      }
+
+      // Attempt to sign in with the temporary email
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: `${memberId}@temp.pwaburton.org`,
         password: password,
       });
 
-      if (error) throw error;
+      if (signInError) {
+        throw signInError;
+      }
 
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: "Welcome! Please update your profile information.",
       });
+      navigate('/change-password');
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("First time login error:", error);
       toast({
         title: "Login failed",
-        description: "Invalid credentials. Please check your email/member ID and password.",
+        description: error instanceof Error ? error.message : "Invalid Member ID or password",
         variant: "destructive",
       });
     } finally {
@@ -67,35 +63,33 @@ export default function Login() {
     }
   };
 
-  const handleFirstTimeLogin = () => {
-    navigate('/first-time-login');
-  };
-
   return (
     <div className="container max-w-lg mx-auto py-10">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login</CardTitle>
+          <CardTitle className="text-2xl text-center">First Time Login</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert className="bg-blue-50 border-blue-200">
             <InfoIcon className="h-4 w-4 text-blue-500" />
             <AlertDescription className="text-sm text-blue-700">
-              Enter your email if you've already updated your profile, or your Member ID if this is your first time logging in.
+              For your first login, use your Member ID (e.g. TM20001) as both your username and password.
+              You'll be prompted to update your email and password after logging in.
             </AlertDescription>
           </Alert>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleFirstTimeLogin} className="space-y-4">
             <div className="space-y-2">
               <Input
-                id="identifier"
-                name="identifier"
+                id="memberId"
+                name="memberId"
                 type="text"
-                placeholder="Email or Member ID"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Member ID (e.g. TM20001)"
+                value={memberId}
+                onChange={(e) => setMemberId(e.target.value.toUpperCase())}
                 required
                 disabled={isLoading}
+                className="uppercase"
               />
             </div>
             <div className="space-y-2">
@@ -103,7 +97,7 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Password"
+                placeholder="Password (same as Member ID)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -111,7 +105,7 @@ export default function Login() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? "Logging in..." : "First Time Login"}
             </Button>
           </form>
 
@@ -121,7 +115,7 @@ export default function Login() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                First time here?
+                Already updated your password?
               </span>
             </div>
           </div>
@@ -129,12 +123,12 @@ export default function Login() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleFirstTimeLogin}
+            onClick={() => navigate('/login')}
           >
-            First Time Login
+            Back to Regular Login
           </Button>
         </CardContent>
       </Card>
     </div>
   );
-};
+}
