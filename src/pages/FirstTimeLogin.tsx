@@ -18,14 +18,15 @@ export default function FirstTimeLogin() {
   const handleFirstTimeLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log("First time login attempt with member ID:", memberId);
+    const cleanMemberId = memberId.toUpperCase().trim();
+    console.log("First time login attempt with member ID:", cleanMemberId);
 
     try {
       // First, get the member details
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('email, password_changed')
-        .eq('member_number', memberId.toUpperCase())
+        .select('email, password_changed, member_number')
+        .eq('member_number', cleanMemberId)
         .single();
 
       if (memberError || !member) {
@@ -36,13 +37,23 @@ export default function FirstTimeLogin() {
         throw new Error("This member has already updated their password. Please use the regular login page.");
       }
 
-      // Attempt to sign in with the temporary email
+      // For first-time login, the password should match the member number
+      if (password !== cleanMemberId) {
+        throw new Error("For first-time login, your password should be the same as your Member ID.");
+      }
+
+      // Get the temporary email
+      const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
+      console.log("Attempting login with:", { email: tempEmail, memberId: cleanMemberId });
+
+      // Attempt to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: `${memberId}@temp.pwaburton.org`,
-        password: password,
+        email: tempEmail,
+        password: cleanMemberId
       });
 
       if (signInError) {
+        console.error("Sign in error:", signInError);
         throw signInError;
       }
 
