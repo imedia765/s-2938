@@ -25,7 +25,7 @@ export default function FirstTimeLogin() {
       // First, get the member details
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('email, password_changed, member_number')
+        .select('email, password_changed, member_number, default_password_hash')
         .eq('member_number', cleanMemberId)
         .single();
 
@@ -46,7 +46,18 @@ export default function FirstTimeLogin() {
       const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
       console.log("Attempting login with:", { email: tempEmail, memberId: cleanMemberId });
 
-      // Attempt to sign in
+      // First try to sign up the user if they don't exist
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: tempEmail,
+        password: cleanMemberId,
+        options: {
+          data: {
+            member_number: cleanMemberId
+          }
+        }
+      });
+
+      // If sign up fails (user might already exist), try to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: tempEmail,
         password: cleanMemberId
