@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { getMemberByMemberId } from "@/utils/memberAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { createHash } from 'crypto-js/sha256';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,13 +45,12 @@ export default function Login() {
     setIsLoading(true);
     
     const formData = new FormData(e.currentTarget);
-    const memberId = formData.get('memberId') as string;
+    const memberId = (formData.get('memberId') as string).toUpperCase().trim();
     const password = formData.get('memberPassword') as string;
     
     try {
-      console.log("Looking up member with ID:", memberId);
+      // First, get the member details
       const member = await getMemberByMemberId(memberId);
-
       console.log("Member lookup complete:", member);
 
       if (!member) {
@@ -61,19 +61,21 @@ export default function Login() {
         throw new Error("No email associated with this Member ID. Please contact support.");
       }
 
-      console.log("Attempting Supabase auth with email:", member.email);
+      // Verify the password matches the default password hash
+      const hashedPassword = createHash(password).toString();
+      if (hashedPassword !== member.default_password_hash) {
+        throw new Error("Invalid password. Please try again.");
+      }
 
-      // For development, we'll use the member number as the password
+      // If password is correct, attempt to sign in with Supabase
+      console.log("Attempting Supabase auth with email:", member.email);
       const { error } = await supabase.auth.signInWithPassword({
         email: member.email,
-        password,
+        password: password, // Use the member ID as the password
       });
 
       if (error) {
         console.error("Supabase auth error:", error);
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error("Invalid Member ID or password. Please try again.");
-        }
         throw error;
       }
 
