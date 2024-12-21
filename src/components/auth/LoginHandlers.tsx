@@ -19,6 +19,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         .maybeSingle();
 
       if (memberError) {
+        console.error('Member check error:', memberError);
         throw new Error("Error checking member status");
       }
 
@@ -26,12 +27,16 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         throw new Error("No member found with this email address. Please check your credentials or contact support.");
       }
 
+      // Attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
 
       toast({
         title: "Login successful",
@@ -60,9 +65,14 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         .from('members')
         .select('email, default_password_hash')
         .eq('member_number', memberId)
-        .single();
+        .maybeSingle();
 
-      if (memberError || !member) {
+      if (memberError) {
+        console.error('Member lookup error:', memberError);
+        throw new Error("Error checking member status");
+      }
+
+      if (!member) {
         throw new Error("Invalid Member ID. Please check your credentials and try again.");
       }
 
@@ -77,6 +87,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       });
 
       if (signInError) {
+        console.error('Sign in error:', signInError);
         throw signInError;
       }
 
