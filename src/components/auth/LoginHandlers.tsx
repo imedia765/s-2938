@@ -16,10 +16,14 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         .from('members')
         .select('id, email_verified, profile_updated')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
-      if (memberError || !memberData) {
-        throw new Error("No member found with this email address");
+      if (memberError) {
+        throw new Error("Error checking member status");
+      }
+
+      if (!memberData) {
+        throw new Error("No member found with this email address. Please check your credentials or contact support.");
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
