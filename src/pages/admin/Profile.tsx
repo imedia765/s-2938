@@ -24,6 +24,7 @@ export default function Profile() {
         navigate("/login");
         return;
       }
+      console.log("Current session:", session);
       setUserEmail(session.user.email);
     };
 
@@ -33,6 +34,7 @@ export default function Profile() {
       if (!session) {
         navigate("/login");
       } else {
+        console.log("Auth state changed:", event, session);
         setUserEmail(session.user.email);
       }
     });
@@ -49,34 +51,53 @@ export default function Profile() {
     queryFn: async () => {
       console.log('Fetching profile for email:', userEmail);
       
-      const { data, error } = await supabase
-        .from('members')
-        .select('*, family_members(*)')
-        .eq('email', userEmail)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from('members')
+          .select(`
+            *,
+            family_members (
+              id,
+              name,
+              relationship,
+              date_of_birth,
+              gender
+            )
+          `)
+          .eq('email', userEmail)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
+        if (error) {
+          console.error('Error fetching profile:', error);
+          toast({
+            title: "Error fetching profile",
+            description: error.message,
+            variant: "destructive",
+          });
+          return null;
+        }
+
+        if (!data) {
+          console.log('No profile found for email:', userEmail);
+          toast({
+            title: "Profile not found",
+            description: "No member profile found for this email address.",
+            variant: "destructive",
+          });
+          return null;
+        }
+
+        console.log('Found profile:', data);
+        return data;
+      } catch (error) {
+        console.error('Error in profile fetch:', error);
         toast({
-          title: "Error fetching profile",
-          description: error.message,
+          title: "Error",
+          description: "An unexpected error occurred while fetching your profile.",
           variant: "destructive",
         });
         return null;
       }
-
-      if (!data) {
-        console.log('No profile found for email:', userEmail);
-        toast({
-          title: "Profile not found",
-          description: "No member profile found for this email address.",
-          variant: "destructive",
-        });
-        return null;
-      }
-
-      console.log('Found profile:', data);
-      return data;
     },
   });
 
