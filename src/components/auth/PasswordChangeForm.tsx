@@ -64,9 +64,8 @@ export const PasswordChangeForm = () => {
         description: "Your password and contact details have been updated successfully",
       });
       
-      // Sign out the user to make them login with new password
-      await supabase.auth.signOut();
-      navigate("/login");
+      // Redirect to admin/profile after password change
+      navigate("/admin/profile");
     } catch (error) {
       console.error("Profile update error:", error);
       toast({

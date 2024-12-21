@@ -21,9 +21,9 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
         }
         
         if (session) {
-          console.log("Active session found, redirecting to admin");
+          console.log("Active session found, redirecting to admin/profile");
           setIsLoggedIn(true);
-          navigate("/admin");
+          navigate("/admin/profile");
         }
       } catch (error) {
         console.error("Session check failed:", error);
@@ -83,19 +83,19 @@ const handleSuccessfulLogin = async (session: any, navigate: (path: string) => v
 
     if (error) {
       console.error("Error checking member status:", error);
-      navigate("/admin");
+      navigate("/admin/profile");
       return;
     }
 
     // Check if email is temporary
     if (member && user.email.endsWith('@temp.pwaburton.org')) {
-      navigate("/profile");
+      navigate("/admin/profile");
       return;
     }
 
     // Check if profile needs to be updated
     if (member && !member.profile_updated) {
-      navigate("/profile");
+      navigate("/admin/profile");
       return;
     }
 
@@ -105,10 +105,10 @@ const handleSuccessfulLogin = async (session: any, navigate: (path: string) => v
       return;
     }
 
-    // If all checks pass, redirect to admin dashboard
-    navigate("/admin");
+    // If all checks pass, redirect to profile
+    navigate("/admin/profile");
   } catch (error) {
     console.error("Error in handleSuccessfulLogin:", error);
-    navigate("/admin");
+    navigate("/admin/profile");
   }
 };
