@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const PasswordChangeForm = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,30 +47,31 @@ export const PasswordChangeForm = () => {
 
       if (updateError) throw updateError;
 
-      // Update the password_changed flag in members table
+      // Update the password_changed flag and phone number in members table
       const { error: memberUpdateError } = await supabase
         .from('members')
         .update({ 
           password_changed: true,
-          first_time_login: false
+          first_time_login: false,
+          phone: phoneNumber
         })
         .eq('email', session.user.email);
 
       if (memberUpdateError) throw memberUpdateError;
 
       toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully",
+        title: "Profile updated",
+        description: "Your password and contact details have been updated successfully",
       });
       
       // Sign out the user to make them login with new password
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error) {
-      console.error("Password change error:", error);
+      console.error("Profile update error:", error);
       toast({
-        title: "Password change failed",
-        description: error instanceof Error ? error.message : "Failed to update password",
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update profile",
         variant: "destructive",
       });
     } finally {
@@ -101,8 +103,17 @@ export const PasswordChangeForm = () => {
           disabled={isLoading}
         />
       </div>
+      <div className="space-y-2">
+        <Input
+          type="tel"
+          placeholder="Contact Number"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          disabled={isLoading}
+        />
+      </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Changing Password..." : "Change Password"}
+        {isLoading ? "Updating Profile..." : "Update Profile"}
       </Button>
     </form>
   );
