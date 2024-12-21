@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 export const PasswordChangeForm = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (newPassword !== confirmPassword) {
       toast({
@@ -20,33 +22,49 @@ export const PasswordChangeForm = () => {
         description: "Please make sure your passwords match",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      // First get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw new Error("Please log in again to change your password");
+      }
+
+      if (!session) {
+        throw new Error("No active session found. Please log in again.");
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       // Update the password_changed flag in members table
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        const { error: updateError } = await supabase
-          .from('members')
-          .update({ password_changed: true })
-          .eq('email', user.email);
+      const { error: memberUpdateError } = await supabase
+        .from('members')
+        .update({ 
+          password_changed: true,
+          first_time_login: false
+        })
+        .eq('email', session.user.email);
 
-        if (updateError) throw updateError;
-      }
+      if (memberUpdateError) throw memberUpdateError;
 
       toast({
         title: "Password updated",
         description: "Your password has been changed successfully",
       });
       
-      navigate("/admin");
+      // Sign out the user to make them login with new password
+      await supabase.auth.signOut();
+      navigate("/login");
     } catch (error) {
       console.error("Password change error:", error);
       toast({
@@ -54,6 +72,8 @@ export const PasswordChangeForm = () => {
         description: error instanceof Error ? error.message : "Failed to update password",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,6 +87,7 @@ export const PasswordChangeForm = () => {
           onChange={(e) => setNewPassword(e.target.value)}
           required
           minLength={6}
+          disabled={isLoading}
         />
       </div>
       <div className="space-y-2">
@@ -77,10 +98,11 @@ export const PasswordChangeForm = () => {
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
           minLength={6}
+          disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full">
-        Change Password
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Changing Password..." : "Change Password"}
       </Button>
     </form>
   );
