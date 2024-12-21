@@ -3,55 +3,48 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { UserSearch } from "./UserSearch";
-import { UserList } from "./UserList";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
-interface Profile {
+interface Member {
   id: string;
+  full_name: string;
+  member_number: string;
+  password_changed: boolean;
   email: string | null;
-  role: string | null;
-  user_id: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export function UserManagementSection() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [updating, setUpdating] = useState<string | null>(null);
-
-  const { data: users, refetch } = useQuery({
-    queryKey: ['profiles', searchTerm],
+  const { data: members, isLoading } = useQuery({
+    queryKey: ['members', searchTerm],
     queryFn: async () => {
       let query = supabase
-        .from('profiles')
+        .from('members')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
-        // Only search email with ilike, and only match role if it exactly matches one of the valid roles
-        if (['member', 'collector', 'admin'].includes(searchTerm.toLowerCase())) {
-          query = query.or(`email.ilike.%${searchTerm}%,role.eq.${searchTerm.toLowerCase()}`);
-        } else {
-          // If search term isn't a valid role, only search in email
-          query = query.ilike('email', `%${searchTerm}%`);
-        }
+        query = query.or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
       }
 
-      const { data: profiles, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching profiles:', error);
+        console.error('Error fetching members:', error);
         throw error;
       }
 
-      return profiles as Profile[];
+      return data as Member[];
     },
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>User Management</CardTitle>
+        <CardTitle>Member Management</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
@@ -60,16 +53,42 @@ export function UserManagementSection() {
             onSearchChange={setSearchTerm}
           />
           
-          {users?.length ? (
-            <UserList 
-              users={users}
-              onUpdate={refetch}
-              updating={updating}
-              setUpdating={setUpdating}
-            />
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : members?.length ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Member Number</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Password Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>{member.member_number}</TableCell>
+                      <TableCell>{member.full_name}</TableCell>
+                      <TableCell>{member.email || 'Not set'}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={member.password_changed ? "success" : "destructive"}
+                        >
+                          {member.password_changed ? 'Updated' : 'Not Updated'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-4 text-muted-foreground">
-              No users found
+              No members found
             </div>
           )}
         </div>
