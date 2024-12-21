@@ -1,8 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -14,7 +16,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       // First check if this is a valid member email
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('id, email_verified, profile_updated')
+        .select('id, email_verified, profile_updated, password_changed')
         .eq('email', email)
         .maybeSingle();
 
@@ -35,14 +37,27 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
       if (error) {
         console.error('Sign in error:', error);
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error("Invalid email or password. Please try again.");
+        }
         throw error;
+      }
+
+      console.log("Login successful:", data);
+      
+      // Check if password needs to be changed
+      if (!memberData.password_changed) {
+        navigate("/change-password");
+        return;
       }
 
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
+      
       setIsLoggedIn(true);
+      navigate("/admin/profile");
     } catch (error) {
       console.error("Email login error:", error);
       toast({
@@ -63,7 +78,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       // First, get the member details
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('email, default_password_hash')
+        .select('email, default_password_hash, password_changed')
         .eq('member_number', memberId)
         .maybeSingle();
 
@@ -80,7 +95,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         throw new Error("No email associated with this Member ID. Please contact support.");
       }
 
-      // Attempt to sign in with the temporary email
+      // Attempt to sign in with the email
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: member.email,
         password: password,
@@ -88,14 +103,25 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
       if (signInError) {
         console.error('Sign in error:', signInError);
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error("Invalid Member ID or password. Please try again.");
+        }
         throw signInError;
+      }
+
+      // Check if password needs to be changed
+      if (!member.password_changed) {
+        navigate("/change-password");
+        return;
       }
 
       toast({
         title: "Login successful",
-        description: "Welcome! Please update your profile information.",
+        description: "Welcome back!",
       });
+      
       setIsLoggedIn(true);
+      navigate("/admin/profile");
     } catch (error) {
       console.error("Member ID login error:", error);
       toast({
@@ -112,7 +138,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + "/admin",
+          redirectTo: window.location.origin + "/admin/profile",
         },
       });
 
