@@ -10,20 +10,42 @@ import { useToast } from "./ui/use-toast";
 export function NavigationMenu() {
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     const checkSession = async () => {
       try {
+        setLoading(true);
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
           console.error("Session check error:", error);
+          setIsLoggedIn(false);
           return;
         }
-        setIsLoggedIn(!!session);
+
+        // If no session, try to refresh
+        if (!session) {
+          const { data: { session: refreshedSession }, error: refreshError } = 
+            await supabase.auth.refreshSession();
+          
+          if (refreshError) {
+            console.error("Session refresh error:", refreshError);
+            setIsLoggedIn(false);
+            return;
+          }
+          
+          setIsLoggedIn(!!refreshedSession);
+        } else {
+          setIsLoggedIn(true);
+        }
       } catch (error) {
         console.error("Session check failed:", error);
+        setIsLoggedIn(false);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -40,17 +62,20 @@ export function NavigationMenu() {
         });
       } else if (event === "SIGNED_OUT") {
         setIsLoggedIn(false);
+        navigate('/login');
       } else if (event === "TOKEN_REFRESHED") {
         console.log("Token refreshed successfully");
+        setIsLoggedIn(true);
       } else if (event === "USER_UPDATED") {
         console.log("User data updated");
+        setIsLoggedIn(true);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [toast]);
+  }, [navigate, toast]);
 
   const handleNavigation = (path: string) => {
     setOpen(false);
@@ -85,6 +110,10 @@ export function NavigationMenu() {
       });
     }
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center p-4">Loading...</div>;
+  }
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -178,4 +207,4 @@ export function NavigationMenu() {
       </div>
     </nav>
   );
-}
+};
