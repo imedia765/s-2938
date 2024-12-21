@@ -42,44 +42,61 @@ export default function FirstTimeLogin() {
         throw new Error("For first-time login, your password should be the same as your Member ID.");
       }
 
-      // Use a more standard temporary email domain
-      const tempEmail = `${cleanMemberId.toLowerCase()}@temporary.org`;
+      // Use the temporary email format
+      const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
       console.log("Attempting login with:", { email: tempEmail, memberId: cleanMemberId });
 
-      // Try to sign in first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Try to sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: tempEmail,
         password: cleanMemberId
       });
 
-      // If sign in fails, try to sign up
-      if (signInError) {
-        console.log("Sign in failed, attempting signup");
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: tempEmail,
-          password: cleanMemberId,
-          options: {
-            data: {
-              member_number: cleanMemberId
+      if (error) {
+        // If sign in fails, try to sign up
+        if (error.message.includes('Invalid login credentials')) {
+          console.log("Sign in failed, attempting signup");
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: tempEmail,
+            password: cleanMemberId,
+            options: {
+              data: {
+                member_number: cleanMemberId
+              }
             }
+          });
+
+          if (signUpError) {
+            console.error("Sign up error:", signUpError);
+            throw signUpError;
           }
-        });
 
-        if (signUpError) {
-          console.error("Sign up error:", signUpError);
-          throw signUpError;
+          // After successful signup, try signing in again
+          const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+            email: tempEmail,
+            password: cleanMemberId
+          });
+
+          if (finalSignInError) {
+            console.error("Final sign in error:", finalSignInError);
+            throw finalSignInError;
+          }
+        } else {
+          throw error;
         }
+      }
 
-        // Try signing in again after successful signup
-        const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+      // Update the member record to link it with the auth user
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({
           email: tempEmail,
-          password: cleanMemberId
-        });
+          auth_user_id: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('member_number', cleanMemberId);
 
-        if (finalSignInError) {
-          console.error("Final sign in error:", finalSignInError);
-          throw finalSignInError;
-        }
+      if (updateError) {
+        console.error("Error updating member:", updateError);
       }
 
       toast({
