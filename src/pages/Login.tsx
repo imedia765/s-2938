@@ -26,11 +26,16 @@ export default function Login() {
         .from('members')
         .select('email, auth_user_id')
         .eq('member_number', memberId)
-        .single();
+        .maybeSingle();
 
-      if (memberError || !memberData?.email) {
+      if (memberError) {
         console.error("Member lookup error:", memberError);
-        throw new Error("Invalid member ID");
+        throw memberError;
+      }
+
+      if (!memberData || !memberData.email) {
+        console.error("No member found with ID:", memberId);
+        throw new Error("Invalid member ID or member has no email address");
       }
 
       console.log("Found member:", memberData);
@@ -57,7 +62,9 @@ export default function Login() {
       console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid credentials",
+        description: error instanceof Error 
+          ? error.message 
+          : "Invalid member ID or password",
         variant: "destructive",
       });
     } finally {
