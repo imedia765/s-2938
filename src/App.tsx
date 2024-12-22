@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import CollectorResponsibilities from "./pages/CollectorResponsibilities";
 import MedicalExaminerProcess from "./pages/MedicalExaminerProcess";
@@ -34,6 +35,7 @@ const App = () => (
             <div className="flex-grow">
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
                 <Route path="/terms" element={<TermsAndConditions />} />
                 <Route path="/collector-responsibilities" element={<CollectorResponsibilities />} />
                 <Route path="/medical-examiner-process" element={<MedicalExaminerProcess />} />
