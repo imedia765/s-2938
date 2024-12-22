@@ -25,24 +25,24 @@ export default function Login() {
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select('email, auth_user_id')
-        .eq('member_number', memberId)
-        .maybeSingle();
+        .eq('member_number', memberId.trim())
+        .limit(1);
 
       if (memberError) {
         console.error("Member lookup error:", memberError);
-        throw memberError;
+        throw new Error("Error looking up member. Please try again.");
       }
 
-      if (!memberData || !memberData.email) {
+      if (!memberData || memberData.length === 0 || !memberData[0].email) {
         console.error("No member found with ID:", memberId);
-        throw new Error("Invalid member ID or member has no email address");
+        throw new Error("No member found with this ID. Please check and try again.");
       }
 
-      console.log("Found member:", memberData);
+      console.log("Found member:", memberData[0]);
 
       // Now sign in with email/password
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: memberData.email,
+        email: memberData[0].email,
         password: password,
       });
 
