@@ -16,6 +16,7 @@ export async function importMembersFromCsv(file: string) {
             'member_number': 'member_number',
             'collector_id': 'collector_id',
             'full_name': 'full_name',
+            'name': 'full_name', // Map 'name' to 'full_name'
             'date_of_birth': 'date_of_birth',
             'gender': 'gender',
             'marital_status': 'marital_status',
@@ -27,14 +28,19 @@ export async function importMembersFromCsv(file: string) {
             'verified': 'verified',
             'created_at': 'created_at',
             'updated_at': 'updated_at',
-            'membership_type': 'membership_type'
+            'membership_type': 'membership_type',
+            'collector': 'collector'
           };
           
           return headerMap[header.toLowerCase()] || header.toLowerCase();
         },
         transform: (value, field) => {
-          // Skip empty values
-          if (!value || value === '' || value === 'Postcode Unknown' || value === 'Town Unknown') {
+          // Skip empty values and "Unknown" values
+          if (!value || 
+              value === '' || 
+              value === 'Postcode Unknown' || 
+              value === 'Town Unknown' ||
+              value.toLowerCase() === 'unknown') {
             return null;
           }
           
@@ -64,6 +70,11 @@ export async function importMembersFromCsv(file: string) {
           if (field === 'verified') {
             return value.toLowerCase() === 'true';
           }
+
+          // Ensure collector name is properly formatted
+          if (field === 'collector' && value) {
+            return value.trim();
+          }
           
           return value;
         },
@@ -73,9 +84,20 @@ export async function importMembersFromCsv(file: string) {
             const cleanRow: any = {};
             Object.entries(row).forEach(([key, value]) => {
               if (value !== null && value !== undefined && value !== '') {
-                cleanRow[key] = value;
+                // Ensure full_name is properly set
+                if (key === 'name' && !row['full_name']) {
+                  cleanRow['full_name'] = value;
+                } else {
+                  cleanRow[key] = value;
+                }
               }
             });
+
+            // Ensure collector name is set if collector_id exists
+            if (cleanRow.collector_id && !cleanRow.collector) {
+              console.warn('Missing collector name for record:', cleanRow);
+            }
+
             return cleanRow;
           });
           

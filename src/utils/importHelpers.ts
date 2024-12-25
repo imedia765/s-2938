@@ -14,12 +14,17 @@ export async function processCollectors(validData: CsvData[], userId: string) {
 
   for (const collectorName of uniqueCollectors) {
     try {
+      if (!collectorName || collectorName.length < 2) {
+        console.error('Invalid collector name:', collectorName);
+        continue;
+      }
+
       console.log('Processing collector:', collectorName);
       
       // First try to find existing collector
       const { data: existingCollectors, error: selectError } = await supabase
         .from('collectors')
-        .select('id')
+        .select('id, name')
         .ilike('name', collectorName);
 
       if (selectError) {
@@ -33,13 +38,20 @@ export async function processCollectors(validData: CsvData[], userId: string) {
         continue;
       }
 
+      // Generate prefix from collector name
+      const prefix = collectorName
+        .split(/[\s/&]+/)
+        .map(word => word.charAt(0).toUpperCase())
+        .join('');
+
       // If no existing collector, create new one
       const { data: newCollector, error: insertError } = await supabase
         .from('collectors')
         .insert({
           name: collectorName,
-          prefix: collectorName.split(' ').map(word => word[0].toUpperCase()).join(''),
-          number: '001'
+          prefix: prefix,
+          number: '001',
+          active: true
         })
         .select('id')
         .single();
