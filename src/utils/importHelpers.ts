@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { transformMemberForSupabase, transformCollectorForSupabase } from "@/utils/dataCleanup";
+import { transformMemberForSupabase } from "@/utils/dataCleanup";
 
 interface CsvData {
   collector: string;
@@ -34,15 +34,13 @@ export async function processCollectors(validData: CsvData[], userId: string) {
       }
 
       // If no existing collector, create new one
-      const collectorData = await transformCollectorForSupabase(collectorName);
-      if (!collectorData) {
-        console.warn('Unexpected null collector data for:', collectorName);
-        continue;
-      }
-
       const { data: newCollector, error: insertError } = await supabase
         .from('collectors')
-        .insert(collectorData)
+        .insert({
+          name: collectorName,
+          prefix: collectorName.split(' ').map(word => word[0].toUpperCase()).join(''),
+          number: '001'
+        })
         .select('id')
         .single();
 
@@ -93,17 +91,16 @@ export async function processMembers(validData: CsvData[], collectorIdMap: Map<s
           continue;
         }
 
-        const memberData = transformMemberForSupabase(member);
+        const memberData = transformMemberForSupabase({
+          ...member,
+          collector_id: collectorId
+        });
 
         if (existingMembers && existingMembers.length > 0) {
           // Update existing member
           const { error: updateError } = await supabase
             .from('members')
-            .update({
-              ...memberData,
-              collector_id: collectorId,
-              collector: member.collector,
-            })
+            .update(memberData)
             .eq('id', existingMembers[0].id);
 
           if (updateError) {
@@ -114,11 +111,7 @@ export async function processMembers(validData: CsvData[], collectorIdMap: Map<s
           // Insert new member
           const { error: insertError } = await supabase
             .from('members')
-            .insert({
-              ...memberData,
-              collector_id: collectorId,
-              collector: member.collector,
-            });
+            .insert(memberData);
 
           if (insertError) {
             console.error('Error inserting member:', insertError);

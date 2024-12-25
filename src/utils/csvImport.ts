@@ -12,38 +12,44 @@ export async function importMembersFromCsv(file: string) {
         transformHeader: (header) => {
           // Map headers to expected format
           const headerMap: { [key: string]: string } = {
-            'Name': 'full_name',
-            'Full Name': 'full_name',
-            'Address': 'address',
-            'Postcode': 'postcode',
-            'Town': 'town',
-            'Date of Birth': 'date_of_birth',
-            'Gender': 'gender',
-            'Marital Status': 'marital_status',
-            'Email': 'email',
-            'Phone': 'phone',
-            'Mobile': 'phone',
-            'Verified': 'verified',
-            'Collector': 'collector'
+            'id': 'id',
+            'member_number': 'member_number',
+            'collector_id': 'collector_id',
+            'full_name': 'full_name',
+            'date_of_birth': 'date_of_birth',
+            'gender': 'gender',
+            'marital_status': 'marital_status',
+            'email': 'email',
+            'phone': 'phone',
+            'address': 'address',
+            'postcode': 'postcode',
+            'town': 'town',
+            'verified': 'verified',
+            'created_at': 'created_at',
+            'updated_at': 'updated_at',
+            'membership_type': 'membership_type'
           };
           
-          // Clean up header name
-          const cleanHeader = header
-            .replace(/^Unknown Author.*Author:\s*/, '')
-            .replace(/\n/g, ' ')
-            .trim();
-            
-          return headerMap[cleanHeader] || cleanHeader.toLowerCase();
+          return headerMap[header.toLowerCase()] || header.toLowerCase();
         },
         transform: (value, field) => {
-          // Handle special cases
-          if (value === 'Postcode Unknown' || value === 'Town Unknown' || value === 'Unknown') {
+          // Skip empty values
+          if (!value || value === '' || value === 'Postcode Unknown' || value === 'Town Unknown') {
             return null;
           }
           
-          // Convert date format if needed
+          // Handle date fields
           if (field === 'date_of_birth' && value) {
             try {
+              // Handle UK date format (DD/MM/YYYY)
+              if (value.includes('/')) {
+                const [day, month, year] = value.split('/').map(Number);
+                const date = new Date(year, month - 1, day);
+                if (!isNaN(date.getTime())) {
+                  return date.toISOString().split('T')[0];
+                }
+              }
+              // Handle ISO format
               const date = new Date(value);
               if (!isNaN(date.getTime())) {
                 return date.toISOString().split('T')[0];
@@ -54,7 +60,7 @@ export async function importMembersFromCsv(file: string) {
             return null;
           }
           
-          // Convert boolean values
+          // Handle boolean values
           if (field === 'verified') {
             return value.toLowerCase() === 'true';
           }
@@ -62,8 +68,19 @@ export async function importMembersFromCsv(file: string) {
           return value;
         },
         complete: (results) => {
-          console.log('Parsed CSV data:', results.data);
-          resolve(results.data);
+          const cleanedData = results.data.map((row: any) => {
+            // Remove empty fields and ensure required fields are present
+            const cleanRow: any = {};
+            Object.entries(row).forEach(([key, value]) => {
+              if (value !== null && value !== undefined && value !== '') {
+                cleanRow[key] = value;
+              }
+            });
+            return cleanRow;
+          });
+          
+          console.log('Parsed CSV data:', cleanedData);
+          resolve(cleanedData);
         },
         error: (error) => {
           console.error('CSV parsing error:', error);
