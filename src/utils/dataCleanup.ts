@@ -30,6 +30,29 @@ async function getNextCollectorNumber(): Promise<string> {
   return nextNumber;
 }
 
+// Function to validate and parse date
+function parseDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  
+  // If it's clearly not a date, return null
+  if (dateStr === 'Town Unknown' || dateStr === 'Unknown' || dateStr === 'N/A') {
+    return null;
+  }
+
+  try {
+    const date = new Date(dateStr);
+    // Check if it's a valid date
+    if (isNaN(date.getTime())) {
+      console.log('Invalid date format:', dateStr);
+      return null;
+    }
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.log('Error parsing date:', dateStr, error);
+    return null;
+  }
+}
+
 // Transform member data to match Supabase schema
 export function transformMemberForSupabase(memberData: any): TablesInsert<'members'> {
   console.log('Raw member data:', memberData);
@@ -54,7 +77,7 @@ export function transformMemberForSupabase(memberData: any): TablesInsert<'membe
     gender: memberData["Gender"] || memberData["gender"],
     marital_status: memberData["Marital Status"] || memberData["marital_status"],
     phone: memberData["Phone"] || memberData["Mobile"] || memberData["phone"],
-    date_of_birth: memberData["Date of Birth"] || memberData["date_of_birth"] || null,
+    date_of_birth: parseDate(memberData["Date of Birth"] || memberData["date_of_birth"]),
     postcode: memberData["Postcode"] || memberData["postcode"],
     town: memberData["Town"] || memberData["town"],
     verified: memberData["Verified"] || memberData["verified"] || false,
