@@ -1,12 +1,40 @@
 import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateTotalBalance, calculateMonthlyIncome, calculateMonthlyExpenses, calculatePercentageChange } from "@/utils/financeCalculations";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export function FinanceStats() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Set up real-time subscription
+  useEffect(() => {
+    console.log("Setting up real-time subscription for payments");
+    const channel = supabase
+      .channel('payments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments'
+        },
+        (payload) => {
+          console.log("Payment change detected:", payload);
+          // Invalidate all payment-related queries to trigger a refresh
+          queryClient.invalidateQueries({ queryKey: ['payments'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("Cleaning up real-time subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: currentMonthPayments, isLoading: isLoadingCurrent } = useQuery({
     queryKey: ['payments', 'currentMonth'],

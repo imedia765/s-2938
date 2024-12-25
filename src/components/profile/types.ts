@@ -10,7 +10,9 @@ export interface Ticket {
   subject: string;
   message: string;
   phoneNumber?: string;
-  status: "open" | "closed";
+  status: "open" | "closed" | "in_progress" | "resolved";
   date: string;
   responses: Response[];
+  description?: string;
+  created_at?: string;
 }

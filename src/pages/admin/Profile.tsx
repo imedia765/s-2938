@@ -14,9 +14,9 @@ export default function Profile() {
   const [searchAmount, setSearchAmount] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [memberNumber, setMemberNumber] = useState<string | null>(null);
 
-  // Check authentication and get user email
+  // Check authentication and get member number
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -25,7 +25,9 @@ export default function Profile() {
         return;
       }
       console.log("Current session:", session);
-      setUserEmail(session.user.email);
+      const memberNum = session.user.user_metadata?.member_number;
+      console.log("Member number from session:", memberNum);
+      setMemberNumber(memberNum);
     };
 
     checkAuth();
@@ -35,7 +37,9 @@ export default function Profile() {
         navigate("/login");
       } else {
         console.log("Auth state changed:", event, session);
-        setUserEmail(session.user.email);
+        const memberNum = session.user.user_metadata?.member_number;
+        console.log("Member number from auth change:", memberNum);
+        setMemberNumber(memberNum);
       }
     });
 
@@ -46,10 +50,10 @@ export default function Profile() {
 
   // Fetch member profile data
   const { data: memberData, isLoading: memberLoading } = useQuery({
-    queryKey: ['member-profile', userEmail],
-    enabled: !!userEmail,
+    queryKey: ['member-profile', memberNumber],
+    enabled: !!memberNumber,
     queryFn: async () => {
-      console.log('Fetching profile for email:', userEmail);
+      console.log('Fetching profile for member number:', memberNumber);
       
       try {
         const { data, error } = await supabase
@@ -64,7 +68,7 @@ export default function Profile() {
               gender
             )
           `)
-          .eq('email', userEmail)
+          .eq('member_number', memberNumber)
           .maybeSingle();
 
         if (error) {
@@ -78,10 +82,10 @@ export default function Profile() {
         }
 
         if (!data) {
-          console.log('No profile found for email:', userEmail);
+          console.log('No profile found for member number:', memberNumber);
           toast({
             title: "Profile not found",
-            description: "No member profile found for this email address.",
+            description: "No member profile found for this member number.",
             variant: "destructive",
           });
           return null;
