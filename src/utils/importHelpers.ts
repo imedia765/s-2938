@@ -87,7 +87,7 @@ export async function processCollectors(validData: CsvData[], userId: string) {
 
 export async function processMembers(validData: CsvData[], collectorIdMap: Map<string, string>, userId: string) {
   let processedCount = 0;
-  const batchSize = 50; // Process members in smaller batches
+  const batchSize = 20; // Process members in smaller batches to avoid timeouts
   
   for (let i = 0; i < validData.length; i += batchSize) {
     const batch = validData.slice(i, i + batchSize);
@@ -106,28 +106,31 @@ export async function processMembers(validData: CsvData[], collectorIdMap: Map<s
           continue;
         }
 
+        const memberData = transformMemberForSupabase({
+          ...member,
+          collector_id: collectorId
+        });
+
+        console.log('Transformed member data:', memberData);
+
         // Check for existing member
         const { data: existingMembers, error: selectError } = await supabase
           .from('members')
           .select('id')
-          .eq('member_number', member.member_number);
+          .eq('id', memberData.id)
+          .maybeSingle();
 
         if (selectError) {
           console.error('Error checking existing member:', selectError);
           continue;
         }
 
-        const memberData = transformMemberForSupabase({
-          ...member,
-          collector_id: collectorId
-        });
-
-        if (existingMembers && existingMembers.length > 0) {
+        if (existingMembers) {
           // Update existing member
           const { error: updateError } = await supabase
             .from('members')
             .update(memberData)
-            .eq('id', existingMembers[0].id);
+            .eq('id', memberData.id);
 
           if (updateError) {
             console.error('Error updating member:', updateError);

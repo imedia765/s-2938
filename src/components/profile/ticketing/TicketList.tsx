@@ -14,11 +14,14 @@ export function TicketList({ tickets, response, setResponse, handleAddResponse }
     return responses.map(resp => ({
       id: resp.id,
       response: resp.response,
+      message: resp.response, // For backwards compatibility
       created_at: resp.created_at,
+      date: resp.created_at, // For backwards compatibility
       updated_at: resp.updated_at,
       responder_id: resp.responder_id,
       ticket_id: resp.ticket_id,
-      responder: resp.responder
+      responder: resp.responder,
+      isAdmin: !!resp.responder?.email // For backwards compatibility
     }));
   };
 
@@ -64,8 +67,8 @@ export function TicketList({ tickets, response, setResponse, handleAddResponse }
                   ticket={{
                     ...ticket,
                     message: ticket.description || "",
-                    date: ticket.created_at || new Date().toISOString(),
-                    responses: mapTicketResponses(ticket.responses || [])
+                    date: ticket.created_at,
+                    responses: ticket.ticket_responses ? mapTicketResponses(ticket.ticket_responses) : []
                   }}
                   response={response}
                   setResponse={setResponse}

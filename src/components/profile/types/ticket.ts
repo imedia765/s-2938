@@ -6,21 +6,28 @@ export interface TicketResponse {
   responder_id: string | null;
   ticket_id: string | null;
   responder?: {
-    full_name: string;
-    email: string;
+    email?: string;
+    full_name?: string;
   };
+  // Backwards compatibility fields
+  message?: string;
+  date?: string;
+  isAdmin?: boolean;
 }
 
 export interface Ticket {
   id: string;
   subject: string;
   description: string;
-  status: "open" | "closed" | "in_progress" | "resolved";
-  priority: "high" | "medium" | "low" | null;
+  status: string | null;
+  priority: string | null;
   created_at: string;
   updated_at: string;
   member_id: string | null;
-  responses: TicketResponse[];
+  member?: {
+    full_name: string;
+  } | null;
+  ticket_responses?: TicketResponse[];
   message?: string;
   date?: string;
 }
