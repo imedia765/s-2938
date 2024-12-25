@@ -1,7 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TicketResponseDialog } from "../TicketResponseDialog";
-import { Ticket, Response } from "../types";
-import { TicketResponse } from "../types/ticket";
+import { Ticket, TicketResponse } from "../types/ticket";
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -11,12 +10,15 @@ interface TicketListProps {
 }
 
 export function TicketList({ tickets, response, setResponse, handleAddResponse }: TicketListProps) {
-  const mapTicketResponses = (responses: TicketResponse[]): Response[] => {
+  const mapTicketResponses = (responses: TicketResponse[]): TicketResponse[] => {
     return responses.map(resp => ({
       id: resp.id,
-      message: resp.response,
-      date: resp.created_at,
-      isAdmin: !!resp.responder?.email
+      response: resp.response,
+      created_at: resp.created_at,
+      updated_at: resp.updated_at,
+      responder_id: resp.responder_id,
+      ticket_id: resp.ticket_id,
+      responder: resp.responder
     }));
   };
 
@@ -55,7 +57,7 @@ export function TicketList({ tickets, response, setResponse, handleAddResponse }
                 </span>
               </TableCell>
               <TableCell>
-                {new Date(ticket.date).toLocaleDateString()}
+                {new Date(ticket.created_at).toLocaleDateString()}
               </TableCell>
               <TableCell>
                 <TicketResponseDialog

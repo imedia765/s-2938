@@ -24,7 +24,7 @@ export async function processCollectors(validData: CsvData[], userId: string) {
       // First try to find existing collector
       const { data: existingCollectors, error: selectError } = await supabase
         .from('collectors')
-        .select('id, name')
+        .select('id, name, prefix, number')
         .ilike('name', collectorName);
 
       if (selectError) {
@@ -44,25 +44,39 @@ export async function processCollectors(validData: CsvData[], userId: string) {
         .map(word => word.charAt(0).toUpperCase())
         .join('');
 
+      // Get the next available number for this prefix
+      const { data: lastCollector } = await supabase
+        .from('collectors')
+        .select('number')
+        .eq('prefix', prefix)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      const nextNumber = lastCollector && lastCollector.length > 0
+        ? String(parseInt(lastCollector[0].number) + 1).padStart(3, '0')
+        : '001';
+
       // If no existing collector, create new one
       const { data: newCollector, error: insertError } = await supabase
         .from('collectors')
         .insert({
           name: collectorName,
           prefix: prefix,
-          number: '001',
+          number: nextNumber,
           active: true
         })
         .select('id')
-        .single();
+        .maybeSingle();
 
       if (insertError) {
         console.error('Error inserting collector:', insertError);
         continue;
       }
 
-      collectorIdMap.set(collectorName, newCollector.id);
-      console.log('Created new collector:', { id: newCollector.id, name: collectorName });
+      if (newCollector) {
+        collectorIdMap.set(collectorName, newCollector.id);
+        console.log('Created new collector:', { id: newCollector.id, name: collectorName });
+      }
     } catch (error) {
       console.error(`Error processing collector ${collectorName}:`, error);
     }
