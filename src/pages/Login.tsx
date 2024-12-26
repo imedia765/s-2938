@@ -5,8 +5,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { useLoginState } from "@/hooks/useLoginState";
 import { useLoginHandler } from "@/hooks/useLoginHandler";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
+  const navigate = useNavigate();
   const {
     isLoading,
     setIsLoading,
@@ -17,6 +21,16 @@ export default function Login() {
   } = useLoginState();
 
   const { handleLogin } = useLoginHandler(setIsLoading);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/admin/profile");
+      }
+    };
+    checkSession();
+  }, [navigate]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

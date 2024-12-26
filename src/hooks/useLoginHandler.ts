@@ -15,13 +15,11 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
       
       // First clear any existing session
       await supabase.auth.signOut();
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('supabase.auth.refreshToken');
-
+      
       // Get member details
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('id, email, password_changed, member_number')
+        .select('id, email, password_changed, member_number, auth_user_id')
         .eq('member_number', cleanMemberId)
         .maybeSingle();
 
@@ -35,6 +33,9 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
         throw new Error("Invalid Member ID. Please check your credentials.");
       }
 
+      console.log("Member found:", { memberId: member.member_number, hasAuthId: !!member.auth_user_id });
+
+      // Use temporary email for login
       const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
       console.log("Attempting login with temp email:", tempEmail);
 
@@ -60,7 +61,8 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
       console.log("Login successful, session created:", !!data.session);
 
       // Update member if needed
-      if (data.user && member.id) {
+      if (data.user && member.id && !member.auth_user_id) {
+        console.log("Updating member with auth user ID");
         const { error: updateError } = await supabase
           .from('members')
           .update({ 
@@ -96,8 +98,6 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
       });
       // Clear any partial session state
       await supabase.auth.signOut();
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('supabase.auth.refreshToken');
     } finally {
       setIsLoading(false);
     }
