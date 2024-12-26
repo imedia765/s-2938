@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { MemberCard } from "@/components/members/MemberCard";
 import { MembersHeader } from "@/components/members/MembersHeader";
@@ -8,13 +8,13 @@ import { CoveredMembersOverview } from "@/components/members/CoveredMembersOverv
 import { MembersPagination } from "@/components/members/MembersPagination";
 import { useMembers } from "@/hooks/use-members";
 import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Table, TableBody } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
 import { ActivateMemberDialog } from "@/components/database/ActivateMemberDialog";
 import { MemberTableRow } from "@/components/members/MemberTableRow";
 import { MemberTableHeader } from "@/components/members/MemberTableHeader";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -25,10 +25,65 @@ export default function Members() {
   const [page, setPage] = useState(0);
   const [activatingMember, setActivatingMember] = useState<any | null>(null);
   const [showPending, setShowPending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const { data, isLoading, error } = useMembers(page, searchTerm);
+  // Check authentication status on mount and when auth state changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          navigate("/login");
+          return;
+        }
+
+        if (!session) {
+          console.log("No active session");
+          navigate("/login");
+          return;
+        }
+
+        // Verify the session is still valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("User verification failed:", userError);
+          await supabase.auth.signOut();
+          navigate("/login");
+          toast({
+            title: "Session Expired",
+            description: "Please log in again to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        navigate("/login");
+      }
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate("/login");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, toast]);
+
+  const { data, error } = useMembers(page, searchTerm);
 
   const handleUpdate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['members'] });
@@ -58,6 +113,15 @@ export default function Members() {
     }
     return true;
   });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <MembersHeader />
+        <div className="text-center py-4">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -93,14 +157,12 @@ export default function Members() {
             <Table>
               <MemberTableHeader />
               <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">Loading members...</TableCell>
-                  </TableRow>
-                ) : !filteredMembers?.length ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">No members found</TableCell>
-                  </TableRow>
+                {!filteredMembers?.length ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4">
+                      No members found
+                    </td>
+                  </tr>
                 ) : (
                   filteredMembers.map((member) => (
                     <MemberTableRow
