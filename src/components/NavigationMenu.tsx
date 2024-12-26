@@ -13,102 +13,146 @@ export function NavigationMenu() {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isSubscribed = true;
+
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("Session check error:", error);
-          setIsLoggedIn(false);
-          localStorage.removeItem('supabase.auth.token');
-        } else {
-          setIsLoggedIn(!!session);
+        // Clear any stale session data first
+        const currentSession = await supabase.auth.getSession();
+        if (currentSession.error) {
+          console.error("Initial session check error:", currentSession.error);
+          await cleanupSession();
+          return;
+        }
+
+        // Only update state if component is still mounted
+        if (isSubscribed) {
+          setIsLoggedIn(!!currentSession.data.session);
         }
       } catch (error) {
         console.error("Session check failed:", error);
-        setIsLoggedIn(false);
-        localStorage.removeItem('supabase.auth.token');
+        await cleanupSession();
       } finally {
-        setLoading(false);
+        if (isSubscribed) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const cleanupSession = async () => {
+      if (!isSubscribed) return;
+      
+      setIsLoggedIn(false);
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.refreshToken');
+      
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (error) {
+        console.error("Error during local signout:", error);
       }
     };
 
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event, !!session);
-      setIsLoggedIn(!!session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isSubscribed) return;
       
-      if (event === "SIGNED_IN") {
-        toast({
-          title: "Signed in successfully",
-          description: "Welcome back!",
-          duration: 3000,
-        });
-      } else if (event === "SIGNED_OUT") {
-        toast({
-          title: "Logged out successfully",
-          description: "Come back soon!",
-          duration: 3000,
-        });
+      console.log("Auth state changed:", event, !!session);
+      
+      switch (event) {
+        case "SIGNED_IN":
+          setIsLoggedIn(true);
+          toast({
+            title: "Signed in successfully",
+            description: "Welcome back!",
+            duration: 3000,
+          });
+          break;
+          
+        case "SIGNED_OUT":
+          await cleanupSession();
+          toast({
+            title: "Logged out successfully",
+            description: "Come back soon!",
+            duration: 3000,
+          });
+          break;
+          
+        case "TOKEN_REFRESHED":
+          if (session) {
+            setIsLoggedIn(true);
+          } else {
+            await cleanupSession();
+          }
+          break;
+
+        case "INITIAL_SESSION":
+          setIsLoggedIn(!!session);
+          break;
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isSubscribed = false;
+      subscription.unsubscribe();
+    };
   }, [toast]);
 
   const handleLogout = async () => {
     try {
-      // First check if we have a valid session
-      const { data: { session } } = await supabase.auth.getSession();
+      setLoading(true);
       
-      // If no session exists, just update the UI state
-      if (!session) {
-        console.log("No active session found, clearing state");
-        setIsLoggedIn(false);
-        localStorage.removeItem('supabase.auth.token');
-        toast({
-          title: "Already logged out",
-          description: "Your session has expired",
-          duration: 3000,
-        });
+      // First check if we have a valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.log("No active session found, cleaning up state");
+        await cleanupLocalState();
         return;
       }
 
-      // Attempt to sign out
-      const { error } = await supabase.auth.signOut();
+      // Attempt to sign out globally
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
       if (error) {
         console.error("Logout error:", error);
-        // If we get a session_not_found error, clear the state
+        // If we get a session_not_found error, just clean up local state
         if (error.message?.includes('session_not_found')) {
-          setIsLoggedIn(false);
-          localStorage.removeItem('supabase.auth.token');
-          toast({
-            title: "Session expired",
-            description: "You have been logged out due to inactivity",
-            duration: 3000,
-          });
+          await cleanupLocalState();
           return;
         }
-        
-        // For other errors, show the error message
-        toast({
-          title: "Logout failed",
-          description: error.message || "An unexpected error occurred",
-          variant: "destructive",
-          duration: 3000,
-        });
+        throw error;
       }
     } catch (error) {
       console.error("Logout error:", error);
-      // Clear local storage and state on error
-      localStorage.removeItem('supabase.auth.token');
-      setIsLoggedIn(false);
+      // Ensure we clean up local state even on error
+      await cleanupLocalState();
       toast({
         title: "Logout failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
         duration: 3000,
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cleanupLocalState = async () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('supabase.auth.refreshToken');
+    
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+      toast({
+        title: "Session expired",
+        description: "You have been logged out due to inactivity",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error during local cleanup:", error);
     }
   };
 
