@@ -15,8 +15,9 @@ export default function Login() {
   const [memberId, setMemberId] = useState('');
   const [password, setPassword] = useState('');
 
-  // Check if user is already logged in
   useEffect(() => {
+    let isSubscribed = true;
+
     const checkSession = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -26,12 +27,17 @@ export default function Login() {
           return;
         }
 
+        // Only proceed if component is still mounted
+        if (!isSubscribed) return;
+
         if (session?.user) {
           console.log("Active session found, redirecting...");
           navigate("/admin/profile");
         }
       } catch (error) {
         console.error("Session check failed:", error);
+        // Clear any stale session data
+        localStorage.removeItem('supabase.auth.token');
       }
     };
 
@@ -39,6 +45,8 @@ export default function Login() {
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isSubscribed) return;
+      
       console.log("Auth state changed:", event, !!session);
       
       if (event === 'SIGNED_IN' && session) {
@@ -46,7 +54,9 @@ export default function Login() {
       }
     });
 
+    // Cleanup function
     return () => {
+      isSubscribed = false;
       subscription.unsubscribe();
     };
   }, [navigate]);
@@ -60,6 +70,7 @@ export default function Login() {
     try {
       // First clear any existing session
       await supabase.auth.signOut();
+      localStorage.removeItem('supabase.auth.token');
 
       // Get member details
       const { data: member, error: memberError } = await supabase
@@ -130,10 +141,20 @@ export default function Login() {
       });
       // Clear any partial session state
       await supabase.auth.signOut();
+      localStorage.removeItem('supabase.auth.token');
     } finally {
-      setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+      }
     }
   };
+
+  // Add mounted check
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   return (
     <div className="container max-w-lg mx-auto py-10">
