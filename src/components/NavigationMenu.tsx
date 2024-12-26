@@ -51,18 +51,7 @@ export function NavigationMenu() {
   const handleLogout = async () => {
     try {
       // First check if we have a valid session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-        setIsLoggedIn(false);
-        toast({
-          title: "Session Error",
-          description: "Your session has expired. Please log in again.",
-          duration: 3000,
-        });
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
       
       // If no session exists, just update the UI state
       if (!session) {
