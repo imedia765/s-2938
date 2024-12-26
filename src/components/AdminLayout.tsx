@@ -9,6 +9,7 @@ import {
 import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
 import { supabase } from "../integrations/supabase/client";
+import { useToast } from "./ui/use-toast";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/admin" },
@@ -25,26 +26,70 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkSession = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          setIsLoggedIn(false);
+          navigate("/login");
+          return;
+        }
+
+        if (!session) {
+          console.log("No active session");
+          setIsLoggedIn(false);
+          navigate("/login");
+          return;
+        }
+
+        // Verify the session is still valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("User verification failed:", userError);
+          setIsLoggedIn(false);
+          localStorage.removeItem('supabase.auth.token');
+          navigate("/login");
+          toast({
+            title: "Session Expired",
+            description: "Please log in again to continue.",
+            duration: 3000,
+          });
+          return;
+        }
+
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error("Session verification error:", error);
+        setIsLoggedIn(false);
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsLoggedIn(!!session);
+      console.log("Auth state changed:", event);
+      if (!session) {
+        setIsLoggedIn(false);
+        navigate("/login");
+      } else {
+        setIsLoggedIn(true);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
-
+  }, [navigate, toast]);
 
   if (loading) {
     return <div>Loading...</div>;

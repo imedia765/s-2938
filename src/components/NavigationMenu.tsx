@@ -51,12 +51,24 @@ export function NavigationMenu() {
   const handleLogout = async () => {
     try {
       // First check if we have a valid session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session check error:", sessionError);
+        setIsLoggedIn(false);
+        toast({
+          title: "Session Error",
+          description: "Your session has expired. Please log in again.",
+          duration: 3000,
+        });
+        return;
+      }
       
       // If no session exists, just update the UI state
       if (!session) {
         console.log("No active session found, clearing state");
         setIsLoggedIn(false);
+        localStorage.removeItem('supabase.auth.token');
         toast({
           title: "Already logged out",
           description: "Your session has expired",
@@ -72,6 +84,7 @@ export function NavigationMenu() {
         // If we get a session_not_found error, clear the state
         if (error.message?.includes('session_not_found')) {
           setIsLoggedIn(false);
+          localStorage.removeItem('supabase.auth.token');
           toast({
             title: "Session expired",
             description: "You have been logged out due to inactivity",
@@ -90,6 +103,9 @@ export function NavigationMenu() {
       }
     } catch (error) {
       console.error("Logout error:", error);
+      // Clear local storage and state on error
+      localStorage.removeItem('supabase.auth.token');
+      setIsLoggedIn(false);
       toast({
         title: "Logout failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
