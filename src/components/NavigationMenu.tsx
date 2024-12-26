@@ -50,6 +50,14 @@ export function NavigationMenu() {
 
   const handleLogout = async () => {
     try {
+      // First check if we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No active session found, clearing state");
+        setIsLoggedIn(false);
+        return;
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error) {

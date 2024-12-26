@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TicketResponseDialog } from "../TicketResponseDialog";
-import { Ticket, TicketResponse } from "../types/ticket";
+import { Ticket, Response } from "../types";
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -10,18 +10,12 @@ interface TicketListProps {
 }
 
 export function TicketList({ tickets, response, setResponse, handleAddResponse }: TicketListProps) {
-  const mapTicketResponses = (responses: TicketResponse[]): TicketResponse[] => {
+  const mapTicketResponses = (responses: any[]): Response[] => {
     return responses.map(resp => ({
       id: resp.id,
-      response: resp.response,
-      message: resp.response, // For backwards compatibility
-      created_at: resp.created_at,
-      date: resp.created_at, // For backwards compatibility
-      updated_at: resp.updated_at,
-      responder_id: resp.responder_id,
-      ticket_id: resp.ticket_id,
-      responder: resp.responder,
-      isAdmin: !!resp.responder?.email // For backwards compatibility
+      message: resp.response || resp.message,
+      date: resp.created_at || resp.date,
+      isAdmin: !!resp.responder?.email
     }));
   };
 
@@ -60,15 +54,15 @@ export function TicketList({ tickets, response, setResponse, handleAddResponse }
                 </span>
               </TableCell>
               <TableCell>
-                {new Date(ticket.created_at).toLocaleDateString()}
+                {new Date(ticket.created_at || ticket.date).toLocaleDateString()}
               </TableCell>
               <TableCell>
                 <TicketResponseDialog
                   ticket={{
                     ...ticket,
                     message: ticket.description || "",
-                    date: ticket.created_at,
-                    responses: ticket.ticket_responses ? mapTicketResponses(ticket.ticket_responses) : []
+                    date: ticket.created_at || ticket.date,
+                    responses: mapTicketResponses(ticket.ticket_responses || ticket.responses || [])
                   }}
                   response={response}
                   setResponse={setResponse}
