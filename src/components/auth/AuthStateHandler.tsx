@@ -13,26 +13,37 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
     
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log("Initial session check:", { session, error });
+        // First check if we have a valid session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log("Initial session check:", { session, sessionError });
         
         if (!isSubscribed) return;
 
-        if (error) {
-          console.error("Session check error:", error);
-          await handleAuthError(error);
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          await handleAuthError(sessionError);
           return;
         }
-        
-        if (session) {
-          console.log("Active session found");
-          setIsLoggedIn(true);
-          await checkMemberStatus(session);
-        } else {
+
+        if (!session) {
           console.log("No active session found");
           setIsLoggedIn(false);
           navigate("/login");
+          return;
         }
+
+        // Verify the session is still valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("User verification failed:", userError);
+          await handleAuthError(userError || new Error("User not found"));
+          return;
+        }
+
+        console.log("Active session found for user:", user.id);
+        setIsLoggedIn(true);
+        await checkMemberStatus(session);
       } catch (error) {
         console.error("Session check failed:", error);
         if (!isSubscribed) return;
@@ -45,7 +56,16 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
       // Clear any stale session data
       await supabase.auth.signOut();
       setIsLoggedIn(false);
-      navigate("/login");
+      
+      // Only navigate if the error is auth-related
+      if (error.message?.includes('session') || error.message?.includes('auth')) {
+        navigate("/login");
+        toast({
+          title: "Session Expired",
+          description: "Please log in again to continue.",
+          variant: "destructive",
+        });
+      }
     };
 
     const checkMemberStatus = async (session: any) => {
@@ -109,6 +129,14 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
           
         case "TOKEN_REFRESHED":
           console.log("Token refreshed successfully");
+          if (session) {
+            setIsLoggedIn(true);
+            await checkMemberStatus(session);
+          }
+          break;
+
+        case "USER_UPDATED":
+          console.log("User data updated");
           if (session) {
             setIsLoggedIn(true);
             await checkMemberStatus(session);
