@@ -7,9 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { useEffect, useState } from "react";
-import { supabase } from "../integrations/supabase/client";
-import { useToast } from "./ui/use-toast";
+import { useAuthState } from "@/hooks/useAuthState";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/admin" },
@@ -23,80 +21,13 @@ const menuItems = [
 ];
 
 export function AdminLayout() {
-  const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const { isSessionValid, isLoading } = useAuthState();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        setLoading(true);
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session check error:", error);
-          setIsLoggedIn(false);
-          navigate("/login");
-          return;
-        }
-
-        if (!session) {
-          console.log("No active session");
-          setIsLoggedIn(false);
-          navigate("/login");
-          return;
-        }
-
-        // Verify the session is still valid
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          console.error("User verification failed:", userError);
-          setIsLoggedIn(false);
-          localStorage.removeItem('supabase.auth.token');
-          navigate("/login");
-          toast({
-            title: "Session Expired",
-            description: "Please log in again to continue.",
-            duration: 3000,
-          });
-          return;
-        }
-
-        setIsLoggedIn(true);
-      } catch (error) {
-        console.error("Session verification error:", error);
-        setIsLoggedIn(false);
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
-      if (!session) {
-        setIsLoggedIn(false);
-        navigate("/login");
-      } else {
-        setIsLoggedIn(true);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate, toast]);
-
-  if (loading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (!isLoggedIn) {
-    navigate("/login");
+  if (!isSessionValid) {
     return null;
   }
 
@@ -118,11 +49,13 @@ export function AdminLayout() {
               {menuItems.map((item) => (
                 <DropdownMenuItem
                   key={item.to}
-                  onClick={() => navigate(item.to)}
+                  asChild
                   className="flex items-center gap-3 cursor-pointer py-3 px-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-300 text-base"
                 >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <Link to={item.to} className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                  </Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
