@@ -4,6 +4,7 @@ import { CreateTicketDialog } from "./CreateTicketDialog";
 import { TicketList } from "./ticketing/TicketList";
 import { useTickets } from "./ticketing/useTickets";
 import { supabase } from "@/integrations/supabase/client";
+import { Ticket } from "./types";
 
 export function TicketingSection() {
   const { toast } = useToast();
@@ -107,7 +108,7 @@ export function TicketingSection() {
         handleCreateTicket={handleCreateTicket}
       />
       <TicketList
-        tickets={tickets}
+        tickets={tickets as Ticket[]}
         response={response}
         setResponse={setResponse}
         handleAddResponse={handleAddResponse}

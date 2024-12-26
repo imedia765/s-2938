@@ -60,7 +60,7 @@ export function TicketList({ tickets, response, setResponse, handleAddResponse }
                 <TicketResponseDialog
                   ticket={{
                     ...ticket,
-                    message: ticket.description || "",
+                    message: ticket.description || ticket.message || "",
                     date: ticket.created_at || ticket.date,
                     responses: mapTicketResponses(ticket.ticket_responses || ticket.responses || [])
                   }}
