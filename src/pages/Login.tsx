@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,42 @@ export default function Login() {
   const [memberId, setMemberId] = useState('');
   const [password, setPassword] = useState('');
 
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          return;
+        }
+
+        if (session?.user) {
+          console.log("Active session found, redirecting...");
+          navigate("/admin/profile");
+        }
+      } catch (error) {
+        console.error("Session check failed:", error);
+      }
+    };
+
+    checkSession();
+
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event, !!session);
+      
+      if (event === 'SIGNED_IN' && session) {
+        navigate("/admin/profile");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -22,10 +58,13 @@ export default function Login() {
     console.log("Login attempt with member ID:", cleanMemberId);
 
     try {
-      // First, get the member details
+      // First clear any existing session
+      await supabase.auth.signOut();
+
+      // Get member details
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('id, email, password_changed, member_number, default_password_hash')
+        .select('id, email, password_changed, member_number')
         .eq('member_number', cleanMemberId)
         .maybeSingle();
 
@@ -41,55 +80,27 @@ export default function Login() {
       const tempEmail = `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
       console.log("Attempting login with temp email:", tempEmail);
 
-      let authResponse;
+      // Attempt to sign in
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: tempEmail,
+        password: password,
+      });
 
-      try {
-        // First attempt to sign in
-        authResponse = await supabase.auth.signInWithPassword({
-          email: tempEmail,
-          password: password,
-        });
-
-        if (authResponse.error) {
-          console.log("Sign in failed:", authResponse.error.message);
-          
-          // If login fails, try to sign up
-          if (authResponse.error.message.includes('Invalid login credentials')) {
-            console.log("Attempting signup for new user");
-            const signUpResponse = await supabase.auth.signUp({
-              email: tempEmail,
-              password: password,
-            });
-
-            if (signUpResponse.error && !signUpResponse.error.message.includes('User already registered')) {
-              throw signUpResponse.error;
-            }
-
-            // Try signing in again after signup
-            authResponse = await supabase.auth.signInWithPassword({
-              email: tempEmail,
-              password: password,
-            });
-          }
-        }
-      } catch (authError) {
-        console.error("Authentication error:", authError);
-        throw new Error("Authentication failed. Please try again.");
+      if (signInError) {
+        console.error('Sign in error:', signInError);
+        throw signInError;
       }
 
-      if (authResponse.error || !authResponse.data?.user) {
-        console.error("Final auth error:", authResponse.error);
-        throw new Error("Authentication failed. Please check your credentials and try again.");
+      if (!data.session) {
+        throw new Error("Failed to create session");
       }
 
-      console.log("Login successful:", authResponse.data);
-
-      // Update auth_user_id if not set
-      if (authResponse.data.user && member.id) {
+      // Update member if needed
+      if (data.user && member.id) {
         const { error: updateError } = await supabase
           .from('members')
           .update({ 
-            auth_user_id: authResponse.data.user.id,
+            auth_user_id: data.user.id,
             email_verified: true,
             profile_updated: true
           })
@@ -114,9 +125,11 @@ export default function Login() {
       console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid credentials. Please check your Member ID and password.",
+        description: error instanceof Error ? error.message : "Invalid credentials",
         variant: "destructive",
       });
+      // Clear any partial session state
+      await supabase.auth.signOut();
     } finally {
       setIsLoading(false);
     }
