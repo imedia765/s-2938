@@ -14,14 +14,22 @@ export function NavigationMenu() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Session check error:", error);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Session check error:", error);
+          setIsLoggedIn(false);
+          localStorage.removeItem('supabase.auth.token');
+        } else {
+          setIsLoggedIn(!!session);
+        }
+      } catch (error) {
+        console.error("Session check failed:", error);
         setIsLoggedIn(false);
-      } else {
-        setIsLoggedIn(!!session);
+        localStorage.removeItem('supabase.auth.token');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkSession();
