@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Ticket } from "../types/ticket";
+import { Ticket } from "../types";
 
 export function useTickets() {
   return useQuery({
@@ -52,7 +52,7 @@ export function useTickets() {
         return [];
       }
 
-      return tickets as Ticket[];
+      return tickets as unknown as Ticket[];
     }
   });
 }

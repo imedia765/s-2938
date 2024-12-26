@@ -100,6 +100,19 @@ export function TicketingSection() {
     });
   };
 
+  // Map the tickets to match the expected Ticket type
+  const mappedTickets: Ticket[] = tickets.map(ticket => ({
+    ...ticket,
+    message: ticket.description || "",
+    date: ticket.created_at || new Date().toISOString(),
+    responses: ticket.ticket_responses?.map(resp => ({
+      id: resp.id,
+      message: resp.response || "",
+      date: resp.created_at,
+      isAdmin: !!resp.responder?.email
+    })) || []
+  }));
+
   return (
     <div className="space-y-6">
       <CreateTicketDialog
@@ -108,7 +121,7 @@ export function TicketingSection() {
         handleCreateTicket={handleCreateTicket}
       />
       <TicketList
-        tickets={tickets as Ticket[]}
+        tickets={mappedTickets}
         response={response}
         setResponse={setResponse}
         handleAddResponse={handleAddResponse}
