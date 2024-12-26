@@ -15,28 +15,86 @@ export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [memberNumber, setMemberNumber] = useState<string | null>(null);
+  const [isSessionValid, setIsSessionValid] = useState(false);
 
   // Check authentication and get member number
   useEffect(() => {
+    let isSubscribed = true;
+
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/login");
-        return;
+      try {
+        // First check if we have a valid session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          if (isSubscribed) {
+            setIsSessionValid(false);
+            navigate("/login");
+            toast({
+              title: "Session Error",
+              description: "Please log in again to continue.",
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+
+        if (!session) {
+          console.log("No active session found");
+          if (isSubscribed) {
+            setIsSessionValid(false);
+            navigate("/login");
+          }
+          return;
+        }
+
+        // Verify the session is still valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("User verification failed:", userError);
+          if (isSubscribed) {
+            setIsSessionValid(false);
+            localStorage.removeItem('supabase.auth.token');
+            navigate("/login");
+            toast({
+              title: "Session Expired",
+              description: "Please log in again to continue.",
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+
+        if (isSubscribed) {
+          console.log("Session verified for user:", user.id);
+          setIsSessionValid(true);
+          const memberNum = user.user_metadata?.member_number;
+          console.log("Member number from session:", memberNum);
+          setMemberNumber(memberNum);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        if (isSubscribed) {
+          setIsSessionValid(false);
+          navigate("/login");
+        }
       }
-      console.log("Current session:", session);
-      const memberNum = session.user.user_metadata?.member_number;
-      console.log("Member number from session:", memberNum);
-      setMemberNumber(memberNum);
     };
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session);
+      
+      if (!isSubscribed) return;
+
       if (!session) {
+        setIsSessionValid(false);
         navigate("/login");
       } else {
-        console.log("Auth state changed:", event, session);
+        setIsSessionValid(true);
         const memberNum = session.user.user_metadata?.member_number;
         console.log("Member number from auth change:", memberNum);
         setMemberNumber(memberNum);
@@ -44,14 +102,15 @@ export default function Profile() {
     });
 
     return () => {
+      isSubscribed = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   // Fetch member profile data
   const { data: memberData, isLoading: memberLoading } = useQuery({
     queryKey: ['member-profile', memberNumber],
-    enabled: !!memberNumber,
+    enabled: !!memberNumber && isSessionValid,
     queryFn: async () => {
       console.log('Fetching profile for member number:', memberNumber);
       
@@ -118,6 +177,10 @@ export default function Profile() {
     { name: 'ID Document.pdf', uploadDate: '2024-03-01', type: 'Identification' },
     { name: 'Proof of Address.pdf', uploadDate: '2024-02-15', type: 'Address Proof' },
   ];
+
+  if (!isSessionValid) {
+    return null;
+  }
 
   if (memberLoading) {
     return (
