@@ -8,7 +8,7 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
 
   const handleLogin = async (memberId: string, password: string) => {
     const cleanMemberId = memberId.toUpperCase().trim();
-    console.log("Login attempt with member ID:", cleanMemberId);
+    console.log("Starting login process for member ID:", cleanMemberId);
 
     try {
       setIsLoading(true);
@@ -31,6 +31,7 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
       }
 
       if (!member) {
+        console.error("No member found with ID:", cleanMemberId);
         throw new Error("Invalid Member ID. Please check your credentials.");
       }
 
@@ -45,12 +46,18 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
 
       if (signInError) {
         console.error('Sign in error:', signInError);
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error("Invalid Member ID or password. Please try again.");
+        }
         throw signInError;
       }
 
       if (!data.session) {
+        console.error("No session created after successful login");
         throw new Error("Failed to create session");
       }
+
+      console.log("Login successful, session created:", !!data.session);
 
       // Update member if needed
       if (data.user && member.id) {
@@ -74,8 +81,10 @@ export const useLoginHandler = (setIsLoading: (value: boolean) => void) => {
       });
       
       if (!member.password_changed) {
+        console.log("Redirecting to change password page");
         navigate("/change-password");
       } else {
+        console.log("Redirecting to admin profile page");
         navigate("/admin/profile");
       }
     } catch (error) {

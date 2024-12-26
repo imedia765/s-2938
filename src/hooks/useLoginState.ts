@@ -15,6 +15,7 @@ export const useLoginState = () => {
 
     const checkSession = async () => {
       try {
+        console.log("Checking for existing session...");
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -27,6 +28,8 @@ export const useLoginState = () => {
         if (session?.user) {
           console.log("Active session found, redirecting...");
           navigate("/admin/profile");
+        } else {
+          console.log("No active session found");
         }
       } catch (error) {
         console.error("Session check failed:", error);
@@ -38,8 +41,9 @@ export const useLoginState = () => {
     const cleanupSession = async () => {
       if (!isSubscribed) return;
       
+      console.log("Cleaning up session data...");
       try {
-        await supabase.auth.signOut({ scope: 'local' });
+        await supabase.auth.signOut();
         localStorage.removeItem('supabase.auth.token');
         localStorage.removeItem('supabase.auth.refreshToken');
       } catch (error) {
@@ -61,10 +65,11 @@ export const useLoginState = () => {
     });
 
     return () => {
+      console.log("Cleaning up login state effect");
       isSubscribed = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   return {
     isLoading,
