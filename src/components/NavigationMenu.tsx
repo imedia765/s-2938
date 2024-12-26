@@ -52,14 +52,42 @@ export function NavigationMenu() {
     try {
       // First check if we have a valid session
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // If no session exists, just update the UI state
       if (!session) {
         console.log("No active session found, clearing state");
         setIsLoggedIn(false);
+        toast({
+          title: "Already logged out",
+          description: "Your session has expired",
+          duration: 3000,
+        });
         return;
       }
 
+      // Attempt to sign out
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error("Logout error:", error);
+        // If we get a session_not_found error, clear the state
+        if (error.message?.includes('session_not_found')) {
+          setIsLoggedIn(false);
+          toast({
+            title: "Session expired",
+            description: "You have been logged out due to inactivity",
+            duration: 3000,
+          });
+          return;
+        }
+        
+        // For other errors, show the error message
+        toast({
+          title: "Logout failed",
+          description: error.message || "An unexpected error occurred",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
     } catch (error) {
       console.error("Logout error:", error);
       toast({
