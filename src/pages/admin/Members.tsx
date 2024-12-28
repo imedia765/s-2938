@@ -20,6 +20,13 @@ export default function Members() {
   const { toast } = useToast();
 
   const { data, isLoading, error } = useMembers(page, searchTerm);
+  const totalPages = Math.ceil((data?.totalCount || 0) / ITEMS_PER_PAGE);
+
+  // Reset page when search term changes
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    setPage(0); // Reset to first page when search changes
+  };
 
   const handleUpdate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['members'] });
@@ -28,8 +35,6 @@ export default function Members() {
   const toggleMember = useCallback((id: string) => {
     setExpandedMember(prev => prev === id ? null : id);
   }, []);
-
-  const totalPages = Math.ceil((data?.totalCount || 0) / ITEMS_PER_PAGE);
 
   if (error) {
     console.error('Members component error:', error);
@@ -53,7 +58,7 @@ export default function Members() {
       <MembersHeader />
       <MembersSearch 
         searchTerm={searchTerm} 
-        setSearchTerm={setSearchTerm} 
+        setSearchTerm={handleSearchChange}
         isLoading={isLoading}
       />
       
@@ -96,12 +101,14 @@ export default function Members() {
                 />
               ))}
               
-              <MembersPagination 
-                page={page}
-                totalPages={totalPages}
-                isLoading={isLoading}
-                setPage={setPage}
-              />
+              {totalPages > 1 && (
+                <MembersPagination 
+                  page={page}
+                  totalPages={totalPages}
+                  isLoading={isLoading}
+                  setPage={setPage}
+                />
+              )}
             </>
           )}
         </div>

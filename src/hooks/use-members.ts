@@ -92,25 +92,37 @@ export const useMembers = (page: number, searchTerm: string) => {
           query = query.or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%`);
         }
 
-        // Apply pagination
-        const from = page * 20;
-        const to = from + 19;
-        
-        // Execute the query
-        const { data: members, error: membersError, count } = await query
-          .range(from, to)
-          .order('created_at', { ascending: false });
+        // Get total count first
+        const { count } = await query;
+        const totalCount = count || 0;
 
-        if (membersError) {
-          console.error('Error fetching members:', membersError);
-          throw membersError;
+        // Then get paginated data
+        const from = page * 20;
+        const to = Math.min(from + 19, totalCount - 1); // Ensure we don't request beyond available data
+        
+        // Only fetch if we have data in this range
+        if (from <= totalCount) {
+          const { data: members, error: membersError } = await query
+            .range(from, to)
+            .order('created_at', { ascending: false });
+
+          if (membersError) {
+            console.error('Error fetching members:', membersError);
+            throw membersError;
+          }
+
+          console.log(`Found ${totalCount} total members, returning ${members?.length} for current page`);
+
+          return {
+            members: members || [],
+            totalCount
+          };
         }
 
-        console.log(`Found ${count} total members, returning ${members?.length} for current page`);
-
+        // Return empty result if page is out of range
         return {
-          members: members || [],
-          totalCount: count || 0
+          members: [],
+          totalCount
         };
       } catch (error) {
         console.error('Error in useMembers hook:', error);
