@@ -27,7 +27,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
     },
   });
 
-  // Get current user's profile and collector ID
+  // Get current user's session and profile
   const { data: userProfile } = useQuery({
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
@@ -36,7 +36,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
 
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role, email')
+        .select('id, role, email')
         .eq('id', session.user.id)
         .maybeSingle();
 
