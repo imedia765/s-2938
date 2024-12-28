@@ -105,7 +105,6 @@ export const useMembers = (page: number, searchTerm: string) => {
         }
 
         console.log(`Found ${count} total members, returning ${members?.length} for current page`);
-        console.log('Members data:', members);
 
         return {
           members: members || [],
