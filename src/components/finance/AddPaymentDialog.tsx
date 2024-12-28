@@ -38,7 +38,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
         .from('profiles')
         .select('role, email')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return profile;
@@ -55,9 +55,13 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
         .from('collectors')
         .select('id')
         .eq('email', userProfile.email)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching collector:', error);
+        return null;
+      }
+
       return data;
     },
     enabled: !!userProfile?.email && userProfile.role === 'collector',
