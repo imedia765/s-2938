@@ -44,7 +44,9 @@ export const useMembers = (page: number, searchTerm: string) => {
           throw new Error('No profile found for user');
         }
 
-        // Initialize query with collectors join
+        console.log('User profile:', profile);
+
+        // Initialize query
         let query = supabase
           .from('members')
           .select(`
@@ -59,7 +61,7 @@ export const useMembers = (page: number, searchTerm: string) => {
 
         // If user is a collector, filter by their collector id
         if (profile.role === 'collector') {
-          console.log('Filtering members for collector role');
+          console.log('User is a collector, fetching collector details...');
           
           // Get collector details based on email
           const { data: collector, error: collectorError } = await supabase
