@@ -26,14 +26,6 @@ export function CollectorCard({
   const statusText = collector.active ? "Active" : "Inactive";
   const statusColor = collector.active ? "text-green-500" : "text-red-500";
 
-  // Only display collector ID if name is missing or appears to be a UUID
-  const isUUID = (str: string) => 
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-  
-  const displayName = isUUID(collector.name) ? 
-    `Collector ${collector.prefix}${collector.number}` : 
-    collector.name;
-
   return (
     <Card className="bg-card">
       <CardHeader className="py-3">
@@ -55,7 +47,7 @@ export function CollectorCard({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-xl text-white truncate">
-                  {collector.prefix}{collector.number} - {displayName}
+                  {collector.prefix}{collector.number} - {collector.name}
                 </h3>
                 <span className={`text-sm ${statusColor}`}>({statusText})</span>
               </div>

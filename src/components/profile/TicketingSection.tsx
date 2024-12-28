@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CreateTicketDialog } from "./CreateTicketDialog";
-import { TicketList } from "./ticketing/TicketList";
-import { useTickets } from "./ticketing/useTickets";
-import { supabase } from "@/integrations/supabase/client";
+import { TicketResponseDialog } from "./TicketResponseDialog";
 import { Ticket } from "./types";
 
 export function TicketingSection() {
   const { toast } = useToast();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [newTicket, setNewTicket] = useState({ subject: "", message: "" });
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [response, setResponse] = useState("");
-  const { data: tickets = [], refetch: refetchTickets } = useTickets();
 
-  const handleCreateTicket = async () => {
+  const handleCreateTicket = () => {
     if (!newTicket.subject || !newTicket.message) {
       toast({
         title: "Error",
@@ -22,96 +29,49 @@ export function TicketingSection() {
       return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const ticket: Ticket = {
+      id: `TICKET-${Math.random().toString(36).substr(2, 9)}`,
+      subject: newTicket.subject,
+      message: newTicket.message,
+      status: "open",
+      date: new Date().toISOString(),
+      responses: [],
+    };
 
-    const memberNumber = session.user.user_metadata?.member_number;
-    
-    if (!memberNumber) {
-      console.log('No member number found in session');
-      return;
-    }
-
-    const { data: member, error: memberError } = await supabase
-      .from('members')
-      .select('id')
-      .eq('member_number', memberNumber)
-      .maybeSingle();
-
-    if (memberError) {
-      console.error('Error fetching member:', memberError);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('support_tickets')
-      .insert({
-        subject: newTicket.subject,
-        description: newTicket.message,
-        member_id: member?.id,
-        status: "open",
-      });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create ticket",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setTickets([ticket, ...tickets]);
     setNewTicket({ subject: "", message: "" });
-    refetchTickets();
     toast({
       title: "Success",
       description: "Ticket created successfully",
     });
   };
 
-  const handleAddResponse = async () => {
-    if (!response) return;
+  const handleAddResponse = () => {
+    if (!response || !selectedTicket) return;
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const newResponse = {
+      id: Math.random().toString(36).substr(2, 9),
+      message: response,
+      date: new Date().toISOString(),
+      isAdmin: false,
+    };
 
-    const { error } = await supabase
-      .from('ticket_responses')
-      .insert({
-        response,
-        ticket_id: tickets[0]?.id,
-        responder_id: session.user.id
-      });
+    const updatedTickets = tickets.map((ticket) =>
+      ticket.id === selectedTicket.id
+        ? {
+            ...ticket,
+            responses: [...ticket.responses, newResponse],
+          }
+        : ticket
+    );
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add response",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setTickets(updatedTickets);
     setResponse("");
-    refetchTickets();
     toast({
       title: "Success",
       description: "Response added successfully",
     });
   };
-
-  // Map the tickets to match the expected Ticket type
-  const mappedTickets: Ticket[] = tickets.map(ticket => ({
-    ...ticket,
-    message: ticket.description || "",
-    date: ticket.created_at || new Date().toISOString(),
-    responses: ticket.ticket_responses?.map(resp => ({
-      id: resp.id,
-      message: resp.response || "",
-      date: resp.created_at,
-      isAdmin: !!resp.responder?.email
-    })) || []
-  }));
 
   return (
     <div className="space-y-6">
@@ -120,12 +80,50 @@ export function TicketingSection() {
         setNewTicket={setNewTicket}
         handleCreateTicket={handleCreateTicket}
       />
-      <TicketList
-        tickets={mappedTickets}
-        response={response}
-        setResponse={setResponse}
-        handleAddResponse={handleAddResponse}
-      />
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Ticket ID</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tickets.map((ticket) => (
+              <TableRow key={ticket.id}>
+                <TableCell>{ticket.id}</TableCell>
+                <TableCell>{ticket.subject}</TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      ticket.status === "open"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {ticket.status}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {new Date(ticket.date).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <TicketResponseDialog
+                    ticket={ticket}
+                    response={response}
+                    setResponse={setResponse}
+                    handleAddResponse={handleAddResponse}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

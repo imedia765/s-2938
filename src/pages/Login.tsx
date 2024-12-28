@@ -1,40 +1,36 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
-import { useLoginState } from "@/hooks/useLoginState";
-import { useLoginHandler } from "@/hooks/useLoginHandler";
-import { useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { LoginTabs } from "../components/auth/LoginTabs";
+import { useToast } from "../hooks/use-toast";
+import { handleMemberIdLogin } from "../components/auth/LoginHandlers";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Login() {
   const navigate = useNavigate();
-  const {
-    isLoading,
-    setIsLoading,
-    memberId,
-    setMemberId,
-    password,
-    setPassword,
-  } = useLoginState();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { handleLogin } = useLoginHandler(setIsLoading);
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/admin/profile");
-      }
-    };
-    checkSession();
-  }, [navigate]);
-
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleMemberIdSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    await handleLogin(memberId, password);
+    setIsLoading(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const memberId = formData.get('memberId') as string;
+    const password = formData.get('password') as string;
+    
+    try {
+      console.log("Attempting member ID login with:", { memberId });
+      await handleMemberIdLogin(memberId, password, navigate);
+    } catch (error) {
+      console.error("Member ID login error:", error);
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Invalid member ID or password",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,45 +39,11 @@ export default function Login() {
         <CardHeader>
           <CardTitle className="text-2xl text-center">Login</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert className="bg-blue-50 border-blue-200">
-            <InfoIcon className="h-4 w-4 text-blue-500" />
-            <AlertDescription className="text-sm text-blue-700">
-              Enter your Member ID and password to login. If you haven't changed your password yet,
-              use your Member ID as both username and password.
-            </AlertDescription>
-          </Alert>
-
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                id="memberId"
-                name="memberId"
-                type="text"
-                placeholder="Member ID (e.g. TM20001)"
-                value={memberId}
-                onChange={(e) => setMemberId(e.target.value.toUpperCase())}
-                required
-                disabled={isLoading}
-                className="uppercase"
-              />
-            </div>
-            <div className="space-y-2">
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
-            </Button>
-          </form>
+        <CardContent>
+          <LoginTabs 
+            onMemberIdSubmit={handleMemberIdSubmit}
+            isLoading={isLoading}
+          />
         </CardContent>
       </Card>
     </div>
