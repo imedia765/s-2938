@@ -51,18 +51,24 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
     queryFn: async () => {
       if (!userProfile?.email || userProfile.role !== 'collector') return null;
 
-      const { data, error } = await supabase
-        .from('collectors')
-        .select('id')
-        .eq('email', userProfile.email)
+      // First get the member record for this user
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('collector_id')
+        .eq('auth_user_id', userProfile.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching collector:', error);
+      if (memberError) {
+        console.error('Error fetching member:', memberError);
         return null;
       }
 
-      return data;
+      if (!memberData?.collector_id) {
+        console.log('No collector_id found for member');
+        return null;
+      }
+
+      return memberData;
     },
     enabled: !!userProfile?.email && userProfile.role === 'collector',
   });
@@ -85,8 +91,8 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
         .limit(10);
 
       // If user is a collector, only show their members
-      if (collectorData?.id) {
-        query.eq('collector_id', collectorData.id);
+      if (collectorData?.collector_id) {
+        query.eq('collector_id', collectorData.collector_id);
       }
 
       const { data, error } = await query;
@@ -116,7 +122,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
                   setSelectedMember(member);
                   setSearchTerm("");
                 }}
-                collectorId={collectorData?.id}
+                collectorId={collectorData?.collector_id}
               />
             </>
           ) : (
@@ -129,7 +135,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
                     .from('payments')
                     .insert({
                       member_id: selectedMember.id,
-                      collector_id: collectorData?.id || selectedMember.collector_id,
+                      collector_id: collectorData?.collector_id || selectedMember.collector_id,
                       amount: parseFloat(data.amount),
                       payment_type: data.paymentType,
                       notes: data.notes,
