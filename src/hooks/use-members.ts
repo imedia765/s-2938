@@ -31,7 +31,7 @@ export const useMembers = (page: number, searchTerm: string) => {
         // Get the user's profile to check their role
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id, role, email')
+          .select('id, role')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -61,30 +61,30 @@ export const useMembers = (page: number, searchTerm: string) => {
 
         // If user is a collector, filter by their collector id
         if (profile.role === 'collector') {
-          console.log('User is a collector, fetching collector details...');
+          console.log('User is a collector, checking collector assignment...');
           
-          // Get collector details based on email
-          const { data: collector, error: collectorError } = await supabase
-            .from('collectors')
-            .select('id')
-            .eq('email', profile.email)
+          // Get the collector ID directly from the members table where this user is assigned
+          const { data: memberData, error: memberError } = await supabase
+            .from('members')
+            .select('collector_id')
+            .eq('auth_user_id', user.id)
             .maybeSingle();
 
-          if (collectorError) {
-            console.error('Error fetching collector:', collectorError);
-            throw collectorError;
+          if (memberError) {
+            console.error('Error fetching member data:', memberError);
+            throw memberError;
           }
 
-          if (!collector) {
-            console.log('No collector found for email:', profile.email);
+          if (!memberData?.collector_id) {
+            console.log('No collector_id found for user');
             return {
               members: [],
               totalCount: 0
             };
           }
 
-          console.log('Found collector:', collector);
-          query = query.eq('collector_id', collector.id);
+          console.log('Found collector_id:', memberData.collector_id);
+          query = query.eq('collector_id', memberData.collector_id);
         }
 
         // Apply search filter if searchTerm exists
