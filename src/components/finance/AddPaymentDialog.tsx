@@ -27,11 +27,47 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
     },
   });
 
-  // Query for searching members with proper collector relationship
+  // Get current user's profile and collector ID
+  const { data: userProfile } = useQuery({
+    queryKey: ['currentUserProfile'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, email')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) throw error;
+      return profile;
+    },
+  });
+
+  // Get collector ID if user is a collector
+  const { data: collectorData } = useQuery({
+    queryKey: ['collectorId', userProfile?.email],
+    queryFn: async () => {
+      if (!userProfile?.email || userProfile.role !== 'collector') return null;
+
+      const { data, error } = await supabase
+        .from('collectors')
+        .select('id')
+        .eq('email', userProfile.email)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userProfile?.email && userProfile.role === 'collector',
+  });
+
+  // Query for searching members
   const { data: members } = useQuery({
     queryKey: ['members', searchTerm],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from('members')
         .select(`
           id, 
@@ -43,28 +79,19 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
         .or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(10);
-      
+
+      // If user is a collector, only show their members
+      if (collectorData?.id) {
+        query.eq('collector_id', collectorData.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-
-      // Remove duplicates based on full_name and collector_id
-      const uniqueMembers = data?.reduce((acc: MemberSearchResult[], current) => {
-        const exists = acc.find(
-          item => 
-            item.full_name.toLowerCase() === current.full_name.toLowerCase() && 
-            item.collector_id === current.collector_id
-        );
-        if (!exists) {
-          acc.push(current);
-        }
-        return acc;
-      }, []);
-
-      return uniqueMembers as MemberSearchResult[];
+      return data as MemberSearchResult[];
     },
     enabled: searchTerm.length > 0,
   });
 
-  // Form submission and other handlers
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
@@ -85,6 +112,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
                   setSelectedMember(member);
                   setSearchTerm("");
                 }}
+                collectorId={collectorData?.id}
               />
             </>
           ) : (
@@ -97,7 +125,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
                     .from('payments')
                     .insert({
                       member_id: selectedMember.id,
-                      collector_id: selectedMember.collector_id,
+                      collector_id: collectorData?.id || selectedMember.collector_id,
                       amount: parseFloat(data.amount),
                       payment_type: data.paymentType,
                       notes: data.notes,
