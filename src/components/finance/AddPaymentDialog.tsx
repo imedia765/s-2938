@@ -40,7 +40,10 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching member:', error);
+        throw error;
+      }
       return member;
     },
   });
@@ -65,18 +68,22 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
   const { data: searchResults } = useQuery({
     queryKey: ['memberSearch', searchTerm],
     queryFn: async () => {
-      if (!searchTerm) return [];
+      if (!searchTerm || !currentMember?.collector_id) return [];
 
       const { data: members, error } = await supabase
         .from('members')
         .select('*')
         .or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%`)
+        .eq('collector_id', currentMember.collector_id)
         .limit(10);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error searching members:', error);
+        throw error;
+      }
       return members || [];
     },
-    enabled: searchTerm.length > 0,
+    enabled: searchTerm.length > 0 && !!currentMember?.collector_id,
   });
 
   return (
