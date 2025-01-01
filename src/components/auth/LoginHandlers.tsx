@@ -31,25 +31,26 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
       throw new Error("Invalid credentials");
     }
 
-    // Generate a valid email for Supabase auth
-    const email = member.email || `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
+    // If member already has an auth account, try to sign in
+    if (member.auth_user_id) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: member.email || `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`,
+        password: cleanMemberId
+      });
 
-    // First try to sign in
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: cleanMemberId
-    });
-
-    // If sign in succeeds, we're done
-    if (!signInError) {
-      console.log("Login successful, redirecting to admin");
-      navigate("/admin");
-      return;
+      if (!signInError) {
+        console.log("Login successful with existing account");
+        navigate("/admin");
+        return;
+      }
     }
 
-    console.log("Sign in failed, attempting to create account");
+    // Generate a valid email for auth
+    const email = member.email || `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
 
-    // If sign in fails, create the account
+    console.log("Creating new auth account for member");
+
+    // Create new auth account
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: email,
       password: cleanMemberId,
@@ -66,10 +67,10 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
       throw new Error("Account creation failed");
     }
 
-    // Wait a moment for the database trigger to complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for database trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Try signing in one more time
+    // Final sign in attempt
     const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
       email: email,
       password: cleanMemberId
