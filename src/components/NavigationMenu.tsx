@@ -3,9 +3,10 @@ import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
+import { useAuthStateHandler } from "./auth/AuthStateHandler";
 
 export function NavigationMenu() {
   const [open, setOpen] = useState(false);
@@ -13,58 +14,8 @@ export function NavigationMenu() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("Session check error:", error);
-          setIsLoggedIn(false);
-          return;
-        }
-        setIsLoggedIn(!!session);
-      } catch (error) {
-        console.error("Session check failed:", error);
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, !!session);
-      
-      switch (event) {
-        case "SIGNED_IN":
-          if (session) {
-            setIsLoggedIn(true);
-            toast({
-              title: "Signed in successfully",
-              description: "Welcome back!",
-            });
-          }
-          break;
-        case "SIGNED_OUT":
-          setIsLoggedIn(false);
-          navigate("/login");
-          break;
-        case "TOKEN_REFRESHED":
-          console.log("Token refreshed successfully");
-          setIsLoggedIn(true);
-          break;
-        case "USER_UPDATED":
-          console.log("User data updated");
-          setIsLoggedIn(true);
-          break;
-        default:
-          console.log("Unhandled auth event:", event);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [toast, navigate]);
+  // Use the consolidated auth state handler
+  useAuthStateHandler(setIsLoggedIn);
 
   const handleNavigation = (path: string) => {
     setOpen(false);
@@ -87,7 +38,6 @@ export function NavigationMenu() {
       navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);
-      // Even if there's an error, we'll still clear the local state
       setIsLoggedIn(false);
       navigate("/login");
       toast({
@@ -193,4 +143,4 @@ export function NavigationMenu() {
       </div>
     </nav>
   );
-};
+}

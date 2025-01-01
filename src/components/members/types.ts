@@ -18,6 +18,7 @@ export interface Member {
   membership_type: string | null;
   collector: string | null;
   cors_enabled: boolean | null;
+  auth_user_id: string | null;  // Added this line
   name?: string; // Added for CoveredMembersOverview compatibility
   coveredMembers?: {
     spouses?: Array<{ name: string; dateOfBirth: string }>;

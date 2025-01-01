@@ -27,77 +27,54 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
     },
   });
 
-  // Get current user's session and profile
-  const { data: userProfile } = useQuery({
-    queryKey: ['currentUserProfile'],
+  // Get current user's session and member data
+  const { data: currentMember } = useQuery({
+    queryKey: ['currentMember'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('id, role, email')
-        .eq('id', session.user.id)
+      const { data: member, error } = await supabase
+        .from('members')
+        .select('id, email, role, collector_id')
+        .eq('auth_user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
-      return profile;
+      return member;
     },
   });
 
   // Get collector ID if user is a collector
   const { data: collectorData } = useQuery({
-    queryKey: ['collectorId', userProfile?.email],
+    queryKey: ['collectorId', currentMember?.email],
     queryFn: async () => {
-      if (!userProfile?.email || userProfile.role !== 'collector') return null;
+      if (!currentMember?.email || currentMember.role !== 'collector') return null;
 
-      // First get the member record for this user
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('collector_id')
-        .eq('auth_user_id', userProfile.id)
-        .maybeSingle();
-
-      if (memberError) {
-        console.error('Error fetching member:', memberError);
-        return null;
-      }
-
-      if (!memberData?.collector_id) {
+      if (!currentMember.collector_id) {
         console.log('No collector_id found for member');
         return null;
       }
 
-      return memberData;
+      return { collector_id: currentMember.collector_id };
     },
-    enabled: !!userProfile?.email && userProfile.role === 'collector',
+    enabled: !!currentMember?.email && currentMember.role === 'collector',
   });
 
-  // Query for searching members
-  const { data: members } = useQuery({
-    queryKey: ['members', searchTerm],
+  // Query to search for members
+  const { data: searchResults } = useQuery({
+    queryKey: ['memberSearch', searchTerm],
     queryFn: async () => {
-      const query = supabase
+      if (!searchTerm) return [];
+
+      const { data: members, error } = await supabase
         .from('members')
-        .select(`
-          id, 
-          full_name, 
-          member_number, 
-          email,
-          collector_id
-        `)
-        .or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-        .order('created_at', { ascending: false })
+        .select('*')
+        .or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%`)
         .limit(10);
 
-      // If user is a collector, only show their members
-      if (collectorData?.collector_id) {
-        query.eq('collector_id', collectorData.collector_id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
-      return data as MemberSearchResult[];
+      return members || [];
     },
     enabled: searchTerm.length > 0,
   });
@@ -117,7 +94,7 @@ export function AddPaymentDialog({ isOpen, onClose, onPaymentAdded }: AddPayment
                 setSearchTerm={setSearchTerm}
               />
               <MemberSearchResults
-                members={members || []}
+                members={searchResults || []}
                 onSelect={(member) => {
                   setSelectedMember(member);
                   setSearchTerm("");

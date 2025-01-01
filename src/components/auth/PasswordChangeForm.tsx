@@ -2,17 +2,19 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const PasswordChangeForm = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (newPassword !== confirmPassword) {
       toast({
@@ -20,6 +22,7 @@ export const PasswordChangeForm = () => {
         description: "Please make sure your passwords match",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
@@ -35,8 +38,11 @@ export const PasswordChangeForm = () => {
       if (user?.email) {
         const { error: updateError } = await supabase
           .from('members')
-          .update({ password_changed: true })
-          .eq('email', user.email);
+          .update({ 
+            password_changed: true,
+            profile_updated: true 
+          })
+          .eq('auth_user_id', user.id);
 
         if (updateError) throw updateError;
       }
@@ -54,6 +60,8 @@ export const PasswordChangeForm = () => {
         description: error instanceof Error ? error.message : "Failed to update password",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,6 +75,7 @@ export const PasswordChangeForm = () => {
           onChange={(e) => setNewPassword(e.target.value)}
           required
           minLength={6}
+          disabled={isLoading}
         />
       </div>
       <div className="space-y-2">
@@ -77,10 +86,11 @@ export const PasswordChangeForm = () => {
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
           minLength={6}
+          disabled={isLoading}
         />
       </div>
-      <Button type="submit" className="w-full">
-        Change Password
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Changing Password..." : "Change Password"}
       </Button>
     </form>
   );

@@ -8,7 +8,7 @@ export async function getMemberByMemberId(memberId: string) {
     const { data, error } = await supabase
       .from('members')
       .select('*')
-      .ilike('member_number', cleanMemberId)
+      .eq('member_number', cleanMemberId)
       .maybeSingle();
 
     if (error) {
