@@ -1,4 +1,3 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberIdLoginForm } from "./MemberIdLoginForm";
 
 interface LoginTabsProps {
