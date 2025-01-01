@@ -7,16 +7,18 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
     console.log("Attempting login with member_number:", cleanMemberId);
     
     // First, authenticate the member using our secure function
-    const { data: member, error: lookupError } = await supabase
+    const { data: authData, error: authError } = await supabase
       .rpc('authenticate_member', {
         p_member_number: cleanMemberId
-      })
-      .single();
+      });
     
-    if (lookupError || !member) {
-      console.error("Member authentication failed:", lookupError);
+    if (authError || !authData?.[0]) {
+      console.error("Member authentication failed:", authError);
       throw new Error("Invalid member ID");
     }
+
+    const member = authData[0];
+    console.log("Member authenticated:", member);
 
     // Verify the password matches the member number
     if (password !== cleanMemberId) {
@@ -26,7 +28,7 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
 
     // If member exists and password matches, sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: `${cleanMemberId}@temp.pwaburton.org`,
+      email: member.email || `${cleanMemberId}@temp.pwaburton.org`,
       password: cleanMemberId
     });
 
