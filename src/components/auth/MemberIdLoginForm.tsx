@@ -20,10 +20,6 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
     formData.set('memberId', cleanMemberId);
     formData.set('password', password);
     
-    console.log("Login attempt with:", {
-      memberId: cleanMemberId,
-    });
-    
     await onSubmit(e);
   };
 
@@ -47,7 +43,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
           id="password"
           name="password"
           type="password"
-          placeholder="Password"
+          placeholder="Password (same as Member ID)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -58,7 +54,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
         {isLoading ? "Logging in..." : "Login"}
       </Button>
       <p className="text-sm text-muted-foreground text-center">
-        Use your Member ID (e.g. TM20001) and password
+        Use your Member ID as both username and password
       </p>
     </form>
   );
