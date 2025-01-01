@@ -12,8 +12,13 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
         p_member_number: cleanMemberId
       });
     
-    if (authError || !authData?.[0]) {
+    if (authError) {
       console.error("Member authentication failed:", authError);
+      throw new Error("Invalid member ID");
+    }
+
+    if (!authData || authData.length === 0) {
+      console.error("No member found with ID:", cleanMemberId);
       throw new Error("Invalid member ID");
     }
 
