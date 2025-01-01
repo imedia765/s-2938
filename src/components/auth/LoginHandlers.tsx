@@ -34,40 +34,50 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
     // Generate a valid email for Supabase auth
     const email = member.email || `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
 
-    // If member exists and password matches, sign in
+    // First try to sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: email,
       password: cleanMemberId
     });
 
-    if (signInError) {
-      // If sign in fails, try to create the account first
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: email,
-        password: cleanMemberId,
-        options: {
-          data: {
-            member_number: cleanMemberId,
-            full_name: member.full_name
-          }
+    // If sign in succeeds, we're done
+    if (!signInError) {
+      console.log("Login successful, redirecting to admin");
+      navigate("/admin");
+      return;
+    }
+
+    console.log("Sign in failed, attempting to create account");
+
+    // If sign in fails, create the account
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: email,
+      password: cleanMemberId,
+      options: {
+        data: {
+          member_number: cleanMemberId,
+          full_name: member.full_name
         }
-      });
-
-      if (signUpError) {
-        console.error('Sign up failed:', signUpError);
-        throw new Error("Login failed");
       }
+    });
 
-      // Try signing in again after creating the account
-      const { data: retrySignInData, error: retrySignInError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: cleanMemberId
-      });
+    if (signUpError) {
+      console.error('Sign up failed:', signUpError);
+      throw new Error("Account creation failed");
+    }
 
-      if (retrySignInError) {
-        console.error('Sign in failed after account creation:', retrySignInError);
-        throw new Error("Login failed");
-      }
+    // Wait a moment for the database trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Try signing in one more time
+    const { data: finalSignInData, error: finalSignInError } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: cleanMemberId
+    });
+
+    if (finalSignInError) {
+      console.error('Final sign in attempt failed:', finalSignInError);
+      throw new Error("Login failed after account creation");
     }
 
     console.log("Login successful, redirecting to admin");
