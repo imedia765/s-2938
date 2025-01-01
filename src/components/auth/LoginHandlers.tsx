@@ -31,20 +31,43 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
       throw new Error("Invalid credentials");
     }
 
+    // Generate a valid email for Supabase auth
+    const email = member.email || `${cleanMemberId.toLowerCase()}@temp.pwaburton.org`;
+
     // If member exists and password matches, sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: member.email || `${cleanMemberId}@temp.pwaburton.org`,
+      email: email,
       password: cleanMemberId
     });
 
     if (signInError) {
-      console.error('Sign in failed:', signInError);
-      throw new Error("Invalid credentials");
-    }
+      // If sign in fails, try to create the account first
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: cleanMemberId,
+        options: {
+          data: {
+            member_number: cleanMemberId,
+            full_name: member.full_name
+          }
+        }
+      });
 
-    if (!signInData?.user) {
-      console.error('Sign in failed - no user data returned');
-      throw new Error("Login failed");
+      if (signUpError) {
+        console.error('Sign up failed:', signUpError);
+        throw new Error("Login failed");
+      }
+
+      // Try signing in again after creating the account
+      const { data: retrySignInData, error: retrySignInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: cleanMemberId
+      });
+
+      if (retrySignInError) {
+        console.error('Sign in failed after account creation:', retrySignInError);
+        throw new Error("Login failed");
+      }
     }
 
     console.log("Login successful, redirecting to admin");
