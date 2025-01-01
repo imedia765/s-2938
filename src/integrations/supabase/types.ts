@@ -489,6 +489,10 @@ export type Database = {
         }
         Returns: string
       }
+      reset_member_passwords: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       sync_collector_ids: {
         Args: Record<PropertyKey, never>
         Returns: undefined
