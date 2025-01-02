@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Collectors from "./pages/Collectors";
+import Members from "./pages/Members";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import CollectorResponsibilities from "./pages/CollectorResponsibilities";
 import { Footer } from "./components/Footer";
@@ -61,6 +62,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/members"
+                  element={
+                    <ProtectedRoute>
+                      <Members />
                     </ProtectedRoute>
                   }
                 />
