@@ -24,15 +24,39 @@ export const MembersList = () => {
   const { data: members, isLoading, error, refetch } = useQuery({
     queryKey: ["members"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: session } = await supabase.auth.getSession();
+      const currentUserId = session?.session?.user?.id;
+
+      if (!currentUserId) {
+        throw new Error("No authenticated user found");
+      }
+
+      const { data: userRole } = await supabase
+        .from('members')
+        .select('role')
+        .eq('auth_user_id', currentUserId)
+        .single();
+
+      let query = supabase
         .from("members")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select(`
+          id,
+          member_number,
+          full_name,
+          email,
+          phone,
+          collector,
+          status
+        `)
+        .order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching members:", error);
         throw error;
       }
+
       return data;
     },
   });
