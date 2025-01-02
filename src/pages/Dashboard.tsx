@@ -16,7 +16,8 @@ const Dashboard = () => {
           throw new Error("No user found");
         }
 
-        const { data, error: profileError } = await supabase
+        // First try to get the member by auth_user_id
+        let { data: profileData, error: profileError } = await supabase
           .from("members")
           .select(`
             id,
@@ -38,17 +39,56 @@ const Dashboard = () => {
           .eq('auth_user_id', session.user.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error("Profile fetch error:", profileError);
-          throw profileError;
+        // If not found by auth_user_id, try by member_number (from user metadata)
+        if (!profileData && session.user.user_metadata?.member_number) {
+          const { data: memberData, error: memberError } = await supabase
+            .from("members")
+            .select(`
+              id,
+              member_number,
+              full_name,
+              email,
+              phone,
+              address,
+              town,
+              postcode,
+              status,
+              role,
+              membership_type,
+              date_of_birth,
+              collector_id,
+              created_at,
+              updated_at
+            `)
+            .eq('member_number', session.user.user_metadata.member_number)
+            .maybeSingle();
+
+          if (memberError) {
+            console.error("Member fetch error:", memberError);
+            throw memberError;
+          }
+
+          if (memberData) {
+            // If found by member_number, update the auth_user_id
+            const { error: updateError } = await supabase
+              .from("members")
+              .update({ auth_user_id: session.user.id })
+              .eq('id', memberData.id);
+
+            if (updateError) {
+              console.error("Failed to update auth_user_id:", updateError);
+            }
+
+            profileData = memberData;
+          }
         }
 
-        if (!data) {
+        if (!profileData) {
           console.error("No profile found for user");
           throw new Error("Profile not found");
         }
 
-        return data;
+        return profileData;
       } catch (err) {
         console.error("Error in profile query:", err);
         throw err;
