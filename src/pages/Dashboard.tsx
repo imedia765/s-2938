@@ -7,22 +7,51 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 const Dashboard = () => {
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, error } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("No user found");
       
+      // Simplified query to avoid recursion
       const { data, error } = await supabase
         .from("members")
-        .select("*")
+        .select(`
+          id,
+          member_number,
+          full_name,
+          email,
+          phone,
+          address,
+          town,
+          postcode,
+          status,
+          role,
+          membership_type,
+          date_of_birth
+        `)
         .eq("auth_user_id", session.user.id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
     },
   });
+
+  if (error) {
+    console.error("Error fetching profile:", error);
+    return (
+      <DashboardLayout>
+        <div className="p-8">
+          <div className="max-w-3xl mx-auto">
+            <Card className="p-6">
+              <p className="text-center text-red-500">Error loading profile data. Please try again later.</p>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
