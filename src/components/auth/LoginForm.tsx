@@ -36,14 +36,16 @@ export const LoginForm = () => {
       // Use member number as email (temporary solution)
       const email = `${memberNumber}@temp.com`;
 
-      // Sign in with Supabase Auth
+      // Try to sign in first
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        password: memberNumber // Using member number as password for now
+        password: memberNumber
       });
 
       if (signInError) {
-        // If sign in fails, try to create the user
+        console.log("Sign in failed, attempting to create account...");
+        
+        // If sign in fails, create the account
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password: memberNumber,
@@ -57,28 +59,35 @@ export const LoginForm = () => {
 
         if (signUpError) {
           console.error("Sign up error:", signUpError);
-          throw signUpError;
+          throw new Error('Failed to create account');
         }
 
-        // Try signing in again after creation
+        // Wait for a moment to allow the database to update
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Try signing in again after account creation
         const { error: finalSignInError } = await supabase.auth.signInWithPassword({
           email,
-          password: memberNumber,
+          password: memberNumber
         });
 
         if (finalSignInError) {
           console.error("Final sign in error:", finalSignInError);
-          throw finalSignInError;
+          throw new Error('Failed to sign in after account creation');
         }
       }
 
-      // Update the member's auth_user_id if needed
+      // Update the member's auth_user_id
       const { data: authData } = await supabase.auth.getUser();
       if (authData?.user) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('members')
           .update({ auth_user_id: authData.user.id })
           .eq('member_number', memberNumber);
+
+        if (updateError) {
+          console.error("Error updating auth_user_id:", updateError);
+        }
       }
 
       toast({
