@@ -2,16 +2,12 @@ import React from "react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 import { LoginForm } from "./auth/LoginForm";
-import { ThemeToggle } from "./ThemeToggle";
 
 export const Hero = () => {
   return (
     <div className="relative overflow-hidden bg-background py-16 px-4">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/50" />
       <div className="container mx-auto relative z-10">
-        <div className="flex justify-end mb-4">
-          <ThemeToggle />
-        </div>
         <div className="text-center space-y-6">
           <h1 className="text-4xl md:text-6xl font-bold text-primary">
             Pakistan Welfare Association
