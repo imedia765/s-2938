@@ -31,19 +31,8 @@ export const MembersList = () => {
         throw new Error("No authenticated user found");
       }
 
-      // First, get the current user's role
-      const { data: currentUser } = await supabase
-        .from('members')
-        .select('role')
-        .eq('auth_user_id', currentUserId)
-        .single();
-
-      if (!currentUser) {
-        throw new Error("User not found in members table");
-      }
-
-      // Base query with specific columns
-      let query = supabase
+      // Get all members - RLS policies will handle access control
+      const { data, error } = await supabase
         .from("members")
         .select(`
           id,
@@ -53,14 +42,8 @@ export const MembersList = () => {
           phone,
           collector,
           status
-        `);
-
-      // If user is a collector, only show their assigned members
-      if (currentUser.role === 'collector') {
-        query = query.eq('collector_id', currentUserId);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error("Error fetching members:", error);
