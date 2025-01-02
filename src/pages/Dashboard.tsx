@@ -10,42 +10,64 @@ const Dashboard = () => {
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No user found");
-      
-      // Simplified query to avoid recursion
-      const { data, error } = await supabase
-        .from("members")
-        .select(`
-          id,
-          member_number,
-          full_name,
-          email,
-          phone,
-          address,
-          town,
-          postcode,
-          status,
-          role,
-          membership_type,
-          date_of_birth
-        `)
-        .eq("auth_user_id", session.user.id)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          throw new Error("No user found");
+        }
+
+        const { data, error: profileError } = await supabase
+          .from("members")
+          .select(`
+            id,
+            member_number,
+            full_name,
+            email,
+            phone,
+            address,
+            town,
+            postcode,
+            status,
+            role,
+            membership_type,
+            date_of_birth,
+            collector_id,
+            created_at,
+            updated_at
+          `)
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("Profile fetch error:", profileError);
+          throw profileError;
+        }
+
+        if (!data) {
+          console.error("No profile found for user");
+          throw new Error("Profile not found");
+        }
+
+        return data;
+      } catch (err) {
+        console.error("Error in profile query:", err);
+        throw err;
+      }
     },
+    retry: 1,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   if (error) {
-    console.error("Error fetching profile:", error);
+    console.error("Dashboard error:", error);
     return (
       <DashboardLayout>
         <div className="p-8">
           <div className="max-w-3xl mx-auto">
             <Card className="p-6">
-              <p className="text-center text-red-500">Error loading profile data. Please try again later.</p>
+              <p className="text-center text-red-500">
+                {error instanceof Error ? error.message : "Error loading profile data. Please try again later."}
+              </p>
             </Card>
           </div>
         </div>
