@@ -38,19 +38,21 @@ export async function signInMember(memberNumber: string): Promise<User | null> {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
-    // First, check if user exists in auth system
-    const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers();
-    
-    if (getUserError) {
-      console.error('Error listing users:', getUserError);
-      throw getUserError;
+    // Try to sign in first
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: normalized,
+    });
+
+    // If sign in succeeds, return the user
+    if (signInData.user) {
+      console.log('Sign in successful:', signInData.user.id);
+      return signInData.user;
     }
 
-    const existingUser = users?.find((u: User) => u.email === email);
-
-    if (!existingUser) {
+    // If sign in fails due to no user existing, create one
+    if (signInError && signInError.message.includes('Invalid login credentials')) {
       console.log('User does not exist, creating new account');
-      // Create new user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password: normalized,
@@ -77,19 +79,13 @@ export async function signInMember(memberNumber: string): Promise<User | null> {
       return signUpData.user;
     }
 
-    // User exists, attempt sign in
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: normalized,
-    });
-
+    // If there was a different error during sign in, throw it
     if (signInError) {
       console.error('Sign in error:', signInError);
       throw signInError;
     }
 
-    console.log('Sign in successful:', signInData.user?.id);
-    return signInData.user;
+    return null;
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
