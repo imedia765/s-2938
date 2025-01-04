@@ -12,7 +12,7 @@ const normalizeMemberNumber = (memberNumber: string): string => {
   return memberNumber.trim().toUpperCase();
 };
 
-export async function verifyMember(memberNumber: string): Promise<Member | null> {
+export async function verifyMember(memberNumber: string): Promise<Member> {
   console.log('Verifying member:', memberNumber);
   const normalized = normalizeMemberNumber(memberNumber);
   
@@ -95,8 +95,8 @@ export async function linkMemberToAuth(memberId: string, authUserId: string) {
 
   if (error) {
     console.error('Error linking member to auth:', error);
-    // Don't throw here as login was still successful
-  } else {
-    console.log('Successfully linked member to auth');
+    throw new Error('Failed to link member account');
   }
+
+  console.log('Successfully linked member to auth');
 }

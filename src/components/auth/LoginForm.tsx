@@ -22,11 +22,11 @@ const LoginForm = () => {
       const member = await verifyMember(memberNumber);
       console.log('Member found:', member);
 
-      // Step 2: Try to sign in first
+      // Step 2: Try to sign in first (in case auth account exists but isn't linked)
       let authUser = await signInMember(memberNumber);
       
-      // If sign in fails and no auth_user_id exists, create account
-      if (!authUser && !member.auth_user_id) {
+      // If sign in fails and no auth_user_id exists, create new account
+      if (!authUser) {
         console.log('Sign in failed, creating new account');
         authUser = await createAuthAccount(memberNumber);
       }
@@ -37,6 +37,7 @@ const LoginForm = () => {
 
       // Step 3: Link member to auth if needed
       if (!member.auth_user_id) {
+        console.log('Linking member to auth account:', authUser.id);
         await linkMemberToAuth(member.id, authUser.id);
       }
 
@@ -49,7 +50,6 @@ const LoginForm = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Provide more specific error messages
       let errorMessage = "An unexpected error occurred";
       if (error.message.includes('Member not found')) {
         errorMessage = "Member number not found. Please check your member number.";
