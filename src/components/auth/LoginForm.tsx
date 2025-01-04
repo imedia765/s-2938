@@ -24,20 +24,21 @@ const LoginForm = () => {
 
       let authUser;
       
-      // Step 2: Check if member already has an auth account
-      if (!member.auth_user_id) {
-        // If no auth account exists, create one
-        console.log('No auth account found, creating new account');
+      // Step 2: Try to sign in first
+      if (member.auth_user_id) {
+        console.log('Auth account exists, attempting sign in');
+        authUser = await signInMember(memberNumber);
+      }
+
+      // Step 3: If sign in fails or no auth_user_id, create account
+      if (!authUser) {
+        console.log('No auth account found or sign in failed, creating new account');
         authUser = await createAuthAccount(memberNumber);
         
-        if (authUser) {
+        if (authUser && !member.auth_user_id) {
           console.log('Linking member to auth account:', authUser.id);
           await linkMemberToAuth(member.id, authUser.id);
         }
-      } else {
-        // If auth account exists, try to sign in
-        console.log('Auth account exists, attempting sign in');
-        authUser = await signInMember(memberNumber);
       }
 
       if (!authUser) {

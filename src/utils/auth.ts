@@ -36,23 +36,18 @@ export async function signInMember(memberNumber: string) {
   const normalized = normalizeMemberNumber(memberNumber);
   const email = `${normalized}@temp.pwaburton.org`;
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: normalized,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: normalized,
+  });
 
-    if (error) {
-      console.error('Sign in error:', error);
-      return null;
-    }
-
-    console.log('Sign in successful:', data.user.id);
-    return data.user;
-  } catch (error) {
-    console.error('Error during sign in:', error);
+  if (error) {
+    console.error('Sign in error:', error);
     return null;
   }
+
+  console.log('Sign in successful:', data.user.id);
+  return data.user;
 }
 
 export async function createAuthAccount(memberNumber: string) {
@@ -61,6 +56,18 @@ export async function createAuthAccount(memberNumber: string) {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
+    // First check if the account already exists
+    const { data: existingUser } = await supabase.auth.signInWithPassword({
+      email,
+      password: normalized,
+    });
+
+    if (existingUser?.user) {
+      console.log('Auth account already exists:', existingUser.user.id);
+      return existingUser.user;
+    }
+
+    // If no existing user, create new account
     const { data, error } = await supabase.auth.signUp({
       email,
       password: normalized,
