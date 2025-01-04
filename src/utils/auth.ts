@@ -37,41 +37,52 @@ export async function signInMember(memberNumber: string) {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
-    // Try to sign in
-    const signInResponse = await supabase.auth.signInWithPassword({
+    // First, check if user exists in auth system
+    const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers();
+    const existingUser = users?.find(u => u.email === email);
+
+    if (!existingUser) {
+      console.log('User does not exist, creating new account');
+      // Create new user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: normalized,
+        options: {
+          data: {
+            member_number: normalized,
+          }
+        }
+      });
+
+      if (signUpError) {
+        console.error('Sign up error:', signUpError);
+        throw signUpError;
+      }
+
+      // Update member record with auth_user_id
+      if (signUpData.user) {
+        await supabase
+          .from('members')
+          .update({ auth_user_id: signUpData.user.id })
+          .eq('member_number', normalized);
+      }
+
+      return signUpData.user;
+    }
+
+    // User exists, attempt sign in
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password: normalized,
     });
 
-    if (signInResponse.error) {
-      console.error('Sign in error:', signInResponse.error);
-      
-      // If invalid credentials, try to create account
-      if (signInResponse.error.message.includes('Invalid login credentials')) {
-        console.log('Invalid credentials, attempting to create account');
-        const signUpResponse = await supabase.auth.signUp({
-          email,
-          password: normalized,
-          options: {
-            data: {
-              member_number: normalized,
-            }
-          }
-        });
-
-        if (signUpResponse.error) {
-          console.error('Sign up error:', signUpResponse.error);
-          throw signUpResponse.error;
-        }
-
-        return signUpResponse.data.user;
-      }
-      
-      throw signInResponse.error;
+    if (signInError) {
+      console.error('Sign in error:', signInError);
+      throw signInError;
     }
 
-    console.log('Sign in successful:', signInResponse.data.user?.id);
-    return signInResponse.data.user;
+    console.log('Sign in successful:', signInData.user?.id);
+    return signInData.user;
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
