@@ -37,26 +37,28 @@ export async function signInMember(memberNumber: string) {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // First try to sign in
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password: normalized,
     });
 
-    if (error) {
-      console.error('Sign in error:', error);
-      return null;
+    if (!signInError && signInData?.user) {
+      console.log('Sign in successful:', signInData.user.id);
+      return signInData.user;
     }
 
-    if (!data?.user) {
-      console.log('No user data returned from sign in');
-      return null;
+    // If sign in fails with invalid credentials, try to create account
+    if (signInError?.message.includes('Invalid login credentials')) {
+      console.log('Invalid credentials, attempting to create account');
+      return await createAuthAccount(normalized);
     }
 
-    console.log('Sign in successful:', data.user.id);
-    return data.user;
+    console.error('Sign in error:', signInError);
+    throw signInError;
   } catch (error) {
-    console.error('Sign in error:', error);
-    return null;
+    console.error('Authentication error:', error);
+    throw error;
   }
 }
 
@@ -66,14 +68,18 @@ export async function createAuthAccount(memberNumber: string) {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
-    // First check if account exists by trying to sign in
-    const existingUser = await signInMember(normalized);
-    if (existingUser) {
-      console.log('Account already exists:', existingUser.id);
-      return existingUser;
+    // Check if user exists first
+    const { data: existingUser } = await supabase.auth.signInWithPassword({
+      email,
+      password: normalized,
+    });
+
+    if (existingUser?.user) {
+      console.log('Account already exists:', existingUser.user.id);
+      return existingUser.user;
     }
 
-    // Create new account if sign in failed
+    // Create new account if user doesn't exist
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password: normalized,
@@ -85,6 +91,13 @@ export async function createAuthAccount(memberNumber: string) {
     });
 
     if (signUpError) {
+      // If user already exists but we couldn't sign in, there might be a password mismatch
+      if (signUpError.message.includes('already registered')) {
+        console.log('User exists but password mismatch, attempting password reset');
+        // In a real app, you might want to implement password reset here
+        throw new Error('Account exists but password is incorrect. Please contact support.');
+      }
+      
       console.error('Error creating auth account:', signUpError);
       throw signUpError;
     }
