@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 
 interface Member {
   id: string;
@@ -31,7 +32,7 @@ export async function verifyMember(memberNumber: string): Promise<Member> {
   return data;
 }
 
-export async function signInMember(memberNumber: string) {
+export async function signInMember(memberNumber: string): Promise<User | null> {
   console.log('Attempting to sign in member:', memberNumber);
   const normalized = normalizeMemberNumber(memberNumber);
   const email = `${normalized}@temp.pwaburton.org`;
@@ -39,7 +40,13 @@ export async function signInMember(memberNumber: string) {
   try {
     // First, check if user exists in auth system
     const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers();
-    const existingUser = users?.find(u => u.email === email);
+    
+    if (getUserError) {
+      console.error('Error listing users:', getUserError);
+      throw getUserError;
+    }
+
+    const existingUser = users?.find((u: User) => u.email === email);
 
     if (!existingUser) {
       console.log('User does not exist, creating new account');
