@@ -27,7 +27,7 @@ export async function verifyMember(memberNumber: string): Promise<Member> {
     throw new Error('Member not found. Please check your member number.');
   }
 
-  console.log('Member verified:', data);
+  console.log('Member found:', data);
   return data;
 }
 
@@ -47,6 +47,11 @@ export async function signInMember(memberNumber: string) {
       return null;
     }
 
+    if (!data?.user) {
+      console.log('No user data returned from sign in');
+      return null;
+    }
+
     console.log('Sign in successful:', data.user.id);
     return data.user;
   } catch (error) {
@@ -61,15 +66,15 @@ export async function createAuthAccount(memberNumber: string) {
   const email = `${normalized}@temp.pwaburton.org`;
 
   try {
-    // First try to sign in
-    const signInResult = await signInMember(normalized);
-    if (signInResult) {
-      console.log('Existing account found:', signInResult.id);
-      return signInResult;
+    // First check if account exists by trying to sign in
+    const existingUser = await signInMember(normalized);
+    if (existingUser) {
+      console.log('Account already exists:', existingUser.id);
+      return existingUser;
     }
 
-    // If sign in fails, create new account
-    const { data, error } = await supabase.auth.signUp({
+    // Create new account if sign in failed
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password: normalized,
       options: {
@@ -79,17 +84,17 @@ export async function createAuthAccount(memberNumber: string) {
       }
     });
 
-    if (error) {
-      console.error('Error creating auth account:', error);
-      throw error;
+    if (signUpError) {
+      console.error('Error creating auth account:', signUpError);
+      throw signUpError;
     }
 
-    if (!data.user) {
-      throw new Error('Failed to create auth account');
+    if (!signUpData?.user) {
+      throw new Error('Failed to create auth account - no user returned');
     }
 
-    console.log('Auth account created:', data.user.id);
-    return data.user;
+    console.log('Auth account created:', signUpData.user.id);
+    return signUpData.user;
   } catch (error) {
     console.error('Error during auth account creation:', error);
     throw error;
