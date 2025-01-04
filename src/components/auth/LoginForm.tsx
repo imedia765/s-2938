@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { verifyMember, signInMember, createAuthAccount, linkMemberToAuth } from '@/utils/auth';
+import { verifyMember, signInMember } from '@/utils/auth';
 
 const LoginForm = () => {
   const [memberNumber, setMemberNumber] = useState('');
@@ -22,25 +22,9 @@ const LoginForm = () => {
       const member = await verifyMember(memberNumber);
       console.log('Member found:', member);
 
-      let authUser;
+      // Step 2: Sign in member
+      const authUser = await signInMember(memberNumber);
       
-      // Step 2: Try to sign in first
-      if (member.auth_user_id) {
-        console.log('Auth account exists, attempting sign in');
-        authUser = await signInMember(memberNumber);
-      }
-
-      // Step 3: If sign in fails or no auth_user_id, create account
-      if (!authUser) {
-        console.log('No auth account found or sign in failed, creating new account');
-        authUser = await createAuthAccount(memberNumber);
-        
-        if (authUser && !member.auth_user_id) {
-          console.log('Linking member to auth account:', authUser.id);
-          await linkMemberToAuth(member.id, authUser.id);
-        }
-      }
-
       if (!authUser) {
         throw new Error('Authentication failed');
       }
@@ -59,8 +43,6 @@ const LoginForm = () => {
         errorMessage = "Member number not found. Please check your member number.";
       } else if (error.message.includes('Invalid login credentials')) {
         errorMessage = "Invalid credentials. Please try again.";
-      } else if (error.message.includes('already registered')) {
-        errorMessage = "This member number is already registered. Please try logging in.";
       }
       
       toast({
