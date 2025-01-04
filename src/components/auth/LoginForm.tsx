@@ -22,23 +22,26 @@ const LoginForm = () => {
       const member = await verifyMember(memberNumber);
       console.log('Member found:', member);
 
-      // Step 2: Try to sign in first (in case auth account exists but isn't linked)
-      let authUser = await signInMember(memberNumber);
+      let authUser;
       
-      // If sign in fails and no auth_user_id exists, create new account
-      if (!authUser) {
-        console.log('Sign in failed, creating new account');
+      // Step 2: Check if member already has an auth account
+      if (!member.auth_user_id) {
+        // If no auth account exists, create one
+        console.log('No auth account found, creating new account');
         authUser = await createAuthAccount(memberNumber);
+        
+        if (authUser) {
+          console.log('Linking member to auth account:', authUser.id);
+          await linkMemberToAuth(member.id, authUser.id);
+        }
+      } else {
+        // If auth account exists, try to sign in
+        console.log('Auth account exists, attempting sign in');
+        authUser = await signInMember(memberNumber);
       }
 
       if (!authUser) {
         throw new Error('Authentication failed');
-      }
-
-      // Step 3: Link member to auth if needed
-      if (!member.auth_user_id) {
-        console.log('Linking member to auth account:', authUser.id);
-        await linkMemberToAuth(member.id, authUser.id);
       }
 
       toast({

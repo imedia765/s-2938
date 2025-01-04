@@ -73,15 +73,14 @@ export async function createAuthAccount(memberNumber: string) {
 
     if (error) {
       console.error('Error creating auth account:', error);
-      // Try signing in if account exists
-      return signInMember(memberNumber);
+      throw error;
     }
 
     console.log('Auth account created:', data.user?.id);
     return data.user;
   } catch (error) {
     console.error('Error during auth account creation:', error);
-    return null;
+    throw error;
   }
 }
 
