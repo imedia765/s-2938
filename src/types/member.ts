@@ -11,4 +11,5 @@ export interface Member {
   town?: string;
   postcode?: string;
   role?: string;
+  collector?: string;
 }
