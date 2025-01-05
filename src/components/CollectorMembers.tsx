@@ -1,47 +1,122 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from '@/integrations/supabase/types';
-import { User } from 'lucide-react';
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-type Member = Database['public']['Tables']['members']['Row'];
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useToast } from "@/hooks/use-toast";
+import { Member } from "@/types/member";
+import { Loader2 } from "lucide-react";
+import MembersList from './MembersList';
 
 const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
-  const { data: members, isLoading } = useQuery({
-    queryKey: ['collector_members', collectorName],
+  const { userRole, roleLoading } = useRoleAccess();
+  const { toast } = useToast();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log('CollectorMembers component mounted for collector:', collectorName);
+    
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('Current user ID:', session.user.id);
+        console.log('User metadata:', session.user.user_metadata);
+        setCurrentUserId(session.user.id);
+      } else {
+        console.log('No active session found');
+      }
+    };
+
+    getCurrentUser();
+  }, [collectorName]);
+
+  const { data: membersData, isLoading: membersLoading, error } = useQuery({
+    queryKey: ['collectorMembers', collectorName, userRole],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('collector', collectorName)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Member[];
+      console.log('Starting members query with:', {
+        collectorName,
+        userRole,
+        currentUserId
+      });
+
+      if (roleLoading) {
+        console.log('Role still loading...');
+        return [];
+      }
+
+      if (!userRole) {
+        console.log('No user role found');
+        return [];
+      }
+
+      console.log('User role:', userRole);
+
+      try {
+        // Check if user is a collector
+        if (userRole === 'collector') {
+          console.log('Verifying collector profile...');
+          const { data: collectorProfile, error: collectorError } = await supabase
+            .from('members_collectors')
+            .select('*')
+            .eq('name', collectorName)
+            .single();
+
+          if (collectorError) {
+            console.error('Error fetching collector profile:', collectorError);
+            throw collectorError;
+          }
+
+          console.log('Found collector profile:', collectorProfile);
+        }
+
+        // Fetch members
+        console.log('Executing members query for collector:', collectorName);
+        const { data: members, error: membersError } = await supabase
+          .from('members')
+          .select('*')
+          .eq('collector', collectorName)
+          .order('member_number');
+
+        if (membersError) {
+          console.error('Error fetching members:', membersError);
+          throw membersError;
+        }
+
+        console.log(`Found ${members?.length || 0} members for collector:`, collectorName);
+        console.log('Members data:', members);
+
+        return members as Member[];
+      } catch (error: any) {
+        console.error('Error in query function:', error);
+        throw error;
+      }
     },
+    enabled: !!collectorName && !roleLoading && !!userRole,
   });
 
-  if (isLoading) return <div>Loading members...</div>;
-  if (!members?.length) return null;
+  useEffect(() => {
+    if (error) {
+      console.error('Query error:', error);
+      toast({
+        title: "Error loading members",
+        description: error instanceof Error ? error.message : "Failed to load members",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
-  return (
-    <ScrollArea className="h-[400px] w-full rounded-md">
-      <div className="space-y-2 pr-4">
-        {members.map((member) => (
-          <div 
-            key={member.id}
-            className="flex items-center gap-3 p-3 bg-black/20 rounded-lg"
-          >
-            <User className="w-5 h-5 text-gray-400" />
-            <div>
-              <p className="text-sm font-medium text-white">{member.full_name}</p>
-              <p className="text-xs text-gray-400">Member #{member.member_number}</p>
-            </div>
-          </div>
-        ))}
+  if (roleLoading || membersLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    </ScrollArea>
-  );
+    );
+  }
+
+  if (!membersData) {
+    return <div className="text-center p-4">No members found</div>;
+  }
+
+  return <MembersList members={membersData} />;
 };
 
 export default CollectorMembers;
