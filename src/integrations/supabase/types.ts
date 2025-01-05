@@ -261,6 +261,73 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_requests: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          collector_id: string
+          created_at: string | null
+          id: string
+          member_id: string
+          member_number: string
+          notes: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_type: string
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          collector_id: string
+          created_at?: string | null
+          id?: string
+          member_id: string
+          member_number: string
+          notes?: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_type: string
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          collector_id?: string
+          created_at?: string | null
+          id?: string
+          member_id?: string
+          member_number?: string
+          notes?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          payment_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_collector_id_fkey"
+            columns: ["collector_id"]
+            isOneToOne: false
+            referencedRelation: "members_collectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_requests_member_number_fkey"
+            columns: ["member_number"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["member_number"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -347,6 +414,7 @@ export type Database = {
       app_role: "admin" | "collector" | "member"
       audit_operation: "create" | "update" | "delete"
       backup_operation_type: "backup" | "restore"
+      payment_method: "bank_transfer" | "cash"
       severity_level: "info" | "warning" | "error" | "critical"
     }
     CompositeTypes: {
