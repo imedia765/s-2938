@@ -4,6 +4,7 @@ import { Database } from '@/integrations/supabase/types';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import CollectorPaymentSummary from './CollectorPaymentSummary';
 
 type Member = Database['public']['Tables']['members']['Row'];
 
@@ -13,6 +14,25 @@ interface MembersListProps {
 }
 
 const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
+  const { data: collectorInfo } = useQuery({
+    queryKey: ['collector-info'],
+    queryFn: async () => {
+      if (userRole !== 'collector') return null;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: collectorData } = await supabase
+        .from('members_collectors')
+        .select('name')
+        .eq('member_number', user.user_metadata.member_number)
+        .single();
+
+      return collectorData;
+    },
+    enabled: userRole === 'collector',
+  });
+
   const { data: members, isLoading, error } = useQuery({
     queryKey: ['members', searchTerm, userRole],
     queryFn: async () => {
@@ -25,11 +45,9 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
         query = query.or(`full_name.ilike.%${searchTerm}%,member_number.ilike.%${searchTerm}%,collector.ilike.%${searchTerm}%`);
       }
 
-      // If user is a collector, only show their assigned members
       if (userRole === 'collector') {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Get the collector's name from members_collectors
           const { data: collectorData } = await supabase
             .from('members_collectors')
             .select('name')
@@ -61,9 +79,10 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
   if (!members?.length) return <div className="text-center py-4">No members found</div>;
 
   return (
-    <ScrollArea className="h-[600px] w-full rounded-md">
-      <Accordion type="single" collapsible className="space-y-4">
-        {members.map((member) => (
+    <div className="space-y-6">
+      <ScrollArea className="h-[600px] w-full rounded-md">
+        <Accordion type="single" collapsible className="space-y-4">
+          {members.map((member) => (
           <AccordionItem 
             key={member.id} 
             value={member.id}
@@ -133,9 +152,14 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
               </div>
             </AccordionContent>
           </AccordionItem>
-        ))}
-      </Accordion>
-    </ScrollArea>
+          ))}
+        </Accordion>
+      </ScrollArea>
+
+      {userRole === 'collector' && collectorInfo && (
+        <CollectorPaymentSummary collectorName={collectorInfo.name} />
+      )}
+    </div>
   );
 };
 
