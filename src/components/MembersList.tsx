@@ -29,7 +29,17 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
       if (userRole === 'collector') {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          query = query.eq('collector_id', user.id);
+          // Get the collector's name from members_collectors
+          const { data: collectorData } = await supabase
+            .from('members_collectors')
+            .select('name')
+            .eq('member_number', user.user_metadata.member_number)
+            .single();
+
+          if (collectorData?.name) {
+            console.log('Filtering members for collector:', collectorData.name);
+            query = query.eq('collector', collectorData.name);
+          }
         }
       }
       
@@ -41,6 +51,7 @@ const MembersList = ({ searchTerm, userRole }: MembersListProps) => {
         throw error;
       }
       
+      console.log('Members query result:', data);
       return data as Member[];
     },
   });
