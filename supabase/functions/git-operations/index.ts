@@ -1,21 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { corsHeaders } from './cors.ts';
 import { DatabaseLogger } from './db-logger.ts';
-import {
-  validateGitHubToken,
-  getRepositoryDetails,
-  getBranchReference,
-  getLatestCommit
-} from './github-api.ts';
-
-interface GitOperationRequest {
-  branch?: string;
-  commitMessage?: string;
-}
+import { validateGitHubToken, getRepositoryDetails, createCommit } from './github-api.ts';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,7 +12,6 @@ serve(async (req) => {
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const githubToken = Deno.env.get('GITHUB_PAT');
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
   const dbLogger = new DatabaseLogger(supabaseUrl, supabaseKey);
 
   try {
@@ -33,34 +20,21 @@ serve(async (req) => {
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
       throw new Error('No authorization header');
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      throw new Error('Invalid token');
-    }
-
-    console.log('User authenticated:', user.id);
-
     if (!githubToken) {
-      console.error('GitHub token not configured');
-      throw new Error('GitHub token not configured in Edge Function secrets');
+      throw new Error('GitHub token not configured');
     }
 
-    await dbLogger.logOperation('started', 'Starting Git push operation', user.id);
-
-    const { branch = 'main', commitMessage = 'Force commit: Pushing all files to master' } = await req.json() as GitOperationRequest;
+    const { branch = 'main', commitMessage = 'Force commit: Pushing all files to master' } = await req.json();
     
     // GitHub repository details
     const repoOwner = 'imedia765';
     const repoName = 's-935078';
     
+    await dbLogger.logOperation('started', 'Starting Git push operation');
+
     // Validate GitHub token
     const tokenValidation = await validateGitHubToken(githubToken);
     if (!tokenValidation.success) {
@@ -73,48 +47,32 @@ serve(async (req) => {
       throw new Error(repoDetails.error);
     }
 
-    // Verify write permissions
-    if (!repoDetails.data.permissions?.push) {
-      console.error('No push permission to repository');
-      throw new Error('GitHub token lacks push permission to repository');
+    // Create commit with current files
+    const result = await createCommit(
+      githubToken,
+      repoOwner,
+      repoName,
+      branch,
+      commitMessage,
+      [
+        {
+          path: 'README.md',
+          content: `# ${repoName}\nLast updated: ${new Date().toISOString()}`
+        }
+      ]
+    );
+
+    if (!result.success) {
+      throw new Error(result.error);
     }
 
-    // Get latest commit
-    const latestCommit = await getLatestCommit(githubToken, repoOwner, repoName, branch);
-    if (!latestCommit.success) {
-      throw new Error(latestCommit.error);
-    }
-
-    // Get branch reference
-    const branchRef = await getBranchReference(githubToken, repoOwner, repoName, branch);
-    if (!branchRef.success) {
-      throw new Error(branchRef.error);
-    }
-
-    // Log success and return response
-    await dbLogger.logOperation('completed', `Successfully pushed to ${branch}`, user.id);
+    await dbLogger.logOperation('completed', `Successfully pushed to ${branch}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: `Successfully pushed to ${branch}`,
-        data: {
-          repository: {
-            name: repoDetails.data.name,
-            default_branch: repoDetails.data.default_branch,
-            has_push_access: repoDetails.data.permissions.push
-          },
-          branch: {
-            name: branch,
-            ref: branchRef.data.ref,
-            sha: branchRef.data.object.sha
-          },
-          latest_commit: {
-            sha: latestCommit.data.sha,
-            message: latestCommit.data.commit?.message,
-            date: latestCommit.data.commit?.author?.date
-          }
-        }
+        data: result.data
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -123,7 +81,6 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in git-operations:', error);
-
     await dbLogger.logOperation('failed', error instanceof Error ? error.message : 'Unknown error occurred');
 
     return new Response(
