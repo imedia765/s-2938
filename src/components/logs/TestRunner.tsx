@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle2, XCircle, Activity, Cpu, Memory, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Activity, Cpu, HardDrive, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 
@@ -151,7 +151,7 @@ export const TestRunner: React.FC = () => {
                       {(results.performance.maxMemoryUsage / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
-                  <Memory className="h-6 w-6 text-dashboard-accent1" />
+                  <HardDrive className="h-6 w-6 text-dashboard-accent1" />
                 </div>
               </div>
               <div className="p-4 bg-dashboard-dark rounded-lg">
