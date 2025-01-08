@@ -15,11 +15,11 @@ const AuditLogsView = () => {
   useEffect(() => {
     const fetchInitialLogs = async () => {
       try {
-        // Fetch recent auth events
+        // Fetch recent auth events using table_name filter instead of operation
         const { data: authEvents, error: authError } = await supabase
           .from('audit_logs')
           .select('*')
-          .eq('operation', 'auth_event')
+          .eq('table_name', 'auth')
           .order('timestamp', { ascending: false })
           .limit(5);
 
@@ -28,7 +28,7 @@ const AuditLogsView = () => {
         // Format auth events for debug console
         const formattedAuthLogs = authEvents?.map(event => {
           const values = event.new_values as any;
-          return `Auth Event: ${values.message} (${new Date(event.timestamp).toLocaleString()})`;
+          return `Auth Event: ${values.message || 'User action'} (${new Date(event.timestamp).toLocaleString()})`;
         }) || [];
 
         // Initialize debug logs with system info and auth events
@@ -48,12 +48,12 @@ const AuditLogsView = () => {
               event: 'INSERT',
               schema: 'public',
               table: 'audit_logs',
-              filter: 'operation=eq.auth_event'
+              filter: 'table_name=eq.auth'
             },
             (payload) => {
               const values = (payload.new as any).new_values;
               setDebugLogs(prev => [
-                `Auth Event: ${values.message} (${new Date().toLocaleString()})`,
+                `Auth Event: ${values.message || 'User action'} (${new Date().toLocaleString()})`,
                 ...prev
               ]);
             }
