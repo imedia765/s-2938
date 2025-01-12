@@ -9,20 +9,10 @@ interface LogsTabsProps {
 
 export const LogsTabs: React.FC<LogsTabsProps> = ({ activeTab, onTabChange }) => {
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-        <TabsTrigger 
-          value="AUDIT"
-          className="data-[state=active]:bg-dashboard-accent1 data-[state=active]:text-white"
-        >
-          Audit Logs
-        </TabsTrigger>
-        <TabsTrigger 
-          value="MONITORING"
-          className="data-[state=active]:bg-dashboard-accent1 data-[state=active]:text-white"
-        >
-          Monitoring Logs
-        </TabsTrigger>
+    <Tabs value={activeTab} onValueChange={onTabChange}>
+      <TabsList>
+        <TabsTrigger value="AUDIT">Audit Logs</TabsTrigger>
+        <TabsTrigger value="MONITORING">Monitoring Logs</TabsTrigger>
       </TabsList>
     </Tabs>
   );

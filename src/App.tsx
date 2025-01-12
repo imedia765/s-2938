@@ -2,10 +2,8 @@ import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import ProtectedRoutes from "@/components/routing/ProtectedRoutes";
-import { BrowserRouter } from "react-router-dom";
 
-// New component to handle auth logic within Router context
-const AuthenticatedApp = () => {
+function App() {
   const { session, loading } = useAuthSession();
 
   if (loading) {
@@ -16,15 +14,11 @@ const AuthenticatedApp = () => {
     );
   }
 
-  return <ProtectedRoutes session={session} />;
-};
-
-function App() {
   return (
-    <BrowserRouter basename="/">
-      <AuthenticatedApp />
+    <>
+      <ProtectedRoutes session={session} />
       <Toaster />
-    </BrowserRouter>
+    </>
   );
 }
 

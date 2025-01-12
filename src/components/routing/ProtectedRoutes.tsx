@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Index from "@/pages/Index";
 import Login from "@/pages/Login";
 import { Session } from "@supabase/supabase-js";
@@ -11,7 +11,26 @@ interface ProtectedRoutesProps {
 }
 
 const AuthWrapper = ({ session }: { session: Session | null }) => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log('Auth state change in router:', event);
+      
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !currentSession) {
+        console.log('User signed out or token refresh failed, redirecting to login');
+        navigate('/login', { replace: true });
+      } else if (event === 'SIGNED_IN' && currentSession) {
+        console.log('User signed in, redirecting to home');
+        navigate('/', { replace: true });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -63,7 +82,11 @@ const AuthWrapper = ({ session }: { session: Session | null }) => {
 };
 
 const ProtectedRoutes = ({ session }: ProtectedRoutesProps) => {
-  return <AuthWrapper session={session} />;
+  return (
+    <BrowserRouter basename="/">
+      <AuthWrapper session={session} />
+    </BrowserRouter>
+  );
 };
 
 export default ProtectedRoutes;

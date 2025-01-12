@@ -4,7 +4,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   LayoutDashboard, 
   Users, 
-  History,
   Settings,
   Wallet,
   LogOut
@@ -21,6 +20,10 @@ const SidePanel = ({ onTabChange, userRole }: SidePanelProps) => {
   const isAdmin = userRole === 'admin';
   const isCollector = userRole === 'collector';
   const { handleSignOut } = useAuthSession();
+
+  const handleLogoutClick = () => {
+    handleSignOut(false);
+  };
 
   return (
     <div className="flex flex-col h-full bg-dashboard-card border-r border-white/10">
@@ -69,15 +72,6 @@ const SidePanel = ({ onTabChange, userRole }: SidePanelProps) => {
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2 text-sm"
-                onClick={() => onTabChange('audit')}
-              >
-                <History className="h-4 w-4" />
-                Audit Logs
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-2 text-sm"
                 onClick={() => onTabChange('system')}
               >
                 <Settings className="h-4 w-4" />
@@ -92,7 +86,7 @@ const SidePanel = ({ onTabChange, userRole }: SidePanelProps) => {
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-sm text-dashboard-muted hover:text-white"
-          onClick={handleSignOut}
+          onClick={handleLogoutClick}
         >
           <LogOut className="h-4 w-4" />
           Logout
