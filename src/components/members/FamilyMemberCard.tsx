@@ -9,6 +9,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { formatDate } from "@/lib/dateFormat";
 
 interface FamilyMemberCardProps {
   name: string | null;
@@ -76,7 +77,7 @@ const FamilyMemberCard = ({ name, relationship, dob, gender, memberNumber }: Fam
               {dob && (
                 <TableRow className="border-b border-[#0EA5E9]/10">
                   <TableCell className="py-2 text-[#1A1F2C] font-medium">Date of Birth</TableCell>
-                  <TableCell className="py-2 text-[#403E43]">{dob}</TableCell>
+                  <TableCell className="py-2 text-[#403E43]">{formatDate(dob)}</TableCell>
                 </TableRow>
               )}
               
