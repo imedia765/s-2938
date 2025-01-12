@@ -156,9 +156,9 @@ const UserRoleCard = ({ user, onRoleChange }: UserRoleCardProps) => {
             className="p-2 hover:bg-dashboard-cardHover rounded-full transition-colors"
           >
             {showDebug ? (
-              <ChevronUp className="h-5 w-5 text-dashboard-text" />
+              <ChevronUp className="h-5 w-5 text-dashboard-info" />
             ) : (
-              <ChevronDown className="h-5 w-5 text-dashboard-text" />
+              <ChevronDown className="h-5 w-5 text-dashboard-info" />
             )}
           </button>
         </div>
