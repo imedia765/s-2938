@@ -5,7 +5,7 @@ import ProtectedRoutes from "@/components/routing/ProtectedRoutes";
 import { useEnhancedRoleAccess } from "@/hooks/useEnhancedRoleAccess";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useNavigate, useLocation, Routes, Route } from "react-router-dom";
 import Login from "@/pages/Login";
 
@@ -25,31 +25,34 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Memoize the loading state calculation
-  const showLoading = useMemo(() => {
-    const isLoading = (sessionLoading || (session && rolesLoading)) && location.pathname !== '/login';
-    if (isLoading) {
-      console.log('Loading state active:', {
-        sessionLoading,
-        rolesLoading,
-        hasSession: !!session,
-        pathname: location.pathname
-      });
-    }
-    return isLoading;
-  }, [sessionLoading, rolesLoading, session, location.pathname]);
+  console.log('App render state:', { 
+    sessionLoading, 
+    rolesLoading, 
+    hasSession: !!session,
+    currentPath: location.pathname,
+    timestamp: new Date().toISOString()
+  });
 
   useEffect(() => {
     if (!sessionLoading) {
+      console.log('Session check complete:', {
+        hasSession: !!session,
+        currentPath: location.pathname,
+        timestamp: new Date().toISOString()
+      });
+
       if (!session && location.pathname !== '/login') {
+        console.log('No session detected, redirecting to login');
         navigate('/login', { replace: true });
       } else if (session && location.pathname === '/login') {
+        console.log('Session detected on login page, redirecting to dashboard');
         navigate('/', { replace: true });
       }
     }
   }, [session, sessionLoading, navigate, location.pathname]);
 
   useEffect(() => {
+    // Force role refresh when session changes
     if (session) {
       queryClient.invalidateQueries({ queryKey: ['userRoles'] });
     }
@@ -64,7 +67,15 @@ function AppContent() {
     });
   }
 
+  // Show loading state only during initial session check or when loading roles for authenticated users
+  const showLoading = (sessionLoading || (session && rolesLoading)) && location.pathname !== '/login';
+  
   if (showLoading) {
+    console.log('Showing loading state:', {
+      sessionLoading,
+      rolesLoading,
+      pathname: location.pathname
+    });
     return (
       <div className="flex items-center justify-center min-h-screen bg-dashboard-dark">
         <Loader2 className="w-8 h-8 animate-spin text-dashboard-accent1" />
