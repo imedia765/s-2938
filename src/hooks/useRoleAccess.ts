@@ -103,6 +103,23 @@ export const useRoleAccess = () => {
     return roles.some(role => hasRole(role));
   };
 
+  const canAccessTab = (tab: string): boolean => {
+    if (!userRoles) return false;
+
+    switch (tab) {
+      case 'dashboard':
+        return true;
+      case 'users':
+        return hasRole('admin') || hasRole('collector');
+      case 'financials':
+        return hasRole('admin') || hasRole('collector');
+      case 'system':
+        return hasRole('admin');
+      default:
+        return false;
+    }
+  };
+
   return {
     userRole,
     userRoles,
@@ -110,6 +127,7 @@ export const useRoleAccess = () => {
     error,
     permissions,
     hasRole,
-    hasAnyRole
+    hasAnyRole,
+    canAccessTab
   };
 };
