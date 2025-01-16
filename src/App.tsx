@@ -51,6 +51,13 @@ function AppContent() {
     }
   }, [session, sessionLoading, navigate, location.pathname]);
 
+  useEffect(() => {
+    // Force role refresh when session changes
+    if (session) {
+      queryClient.invalidateQueries({ queryKey: ['userRoles'] });
+    }
+  }, [session]);
+
   if (rolesError) {
     console.error('Role loading error:', rolesError);
     toast({
