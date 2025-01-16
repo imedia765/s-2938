@@ -8,6 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { PaymentTableHeader } from "../payments-table/PaymentTableHeader";
 import { PaymentTableRow } from "../payments-table/PaymentTableRow";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface AllPaymentsTableProps {
   showHistory?: boolean;
@@ -20,6 +26,8 @@ const AllPaymentsTable = ({ showHistory = false }: AllPaymentsTableProps) => {
   const { data: paymentsData, isLoading, error } = useQuery({
     queryKey: ['payment-requests'],
     queryFn: async () => {
+      console.log('Fetching payment requests...');
+      
       const { data, error, count } = await supabase
         .from('payment_requests')
         .select(`
@@ -30,20 +38,41 @@ const AllPaymentsTable = ({ showHistory = false }: AllPaymentsTableProps) => {
             phone,
             email
           ),
-          collectors:members_collectors(
+          collector:members_collectors!payment_requests_collector_id_fkey(
             name,
             phone,
             email
           )
-        `, { count: 'exact' })
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' });
 
       if (error) {
         console.error('Error fetching payments:', error);
         throw error;
       }
 
-      return { data, count };
+      console.log('Raw payments data:', data);
+
+      // Group payments by collector name, with better error handling
+      const groupedPayments = data?.reduce((acc, payment) => {
+        // Get collector name with proper null checking
+        const collectorName = payment.collector?.name || 'Unassigned';
+        console.log('Processing payment:', {
+          id: payment.id,
+          collectorId: payment.collector_id,
+          collectorData: payment.collector,
+          collectorName
+        });
+
+        if (!acc[collectorName]) {
+          acc[collectorName] = [];
+        }
+        acc[collectorName].push(payment);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      console.log('Grouped payments:', groupedPayments);
+
+      return { groupedPayments, count };
     },
   });
 
@@ -77,6 +106,32 @@ const AllPaymentsTable = ({ showHistory = false }: AllPaymentsTableProps) => {
     }
   };
 
+  const handleDelete = async (paymentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('payment_requests')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Payment Deleted",
+        description: "The payment record has been deleted successfully.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['payment-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-statistics'] });
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the payment record.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="bg-dashboard-card border-dashboard-accent1/20 rounded-lg">
@@ -105,9 +160,10 @@ const AllPaymentsTable = ({ showHistory = false }: AllPaymentsTableProps) => {
     );
   }
 
-  const payments = paymentsData?.data || [];
+  const groupedPayments = paymentsData?.groupedPayments || {};
+  const collectors = Object.keys(groupedPayments);
 
-  if (!payments.length) {
+  if (collectors.length === 0) {
     return (
       <Card className="bg-dashboard-card border-dashboard-accent1/20 rounded-lg">
         <div className="p-6">
@@ -125,21 +181,44 @@ const AllPaymentsTable = ({ showHistory = false }: AllPaymentsTableProps) => {
     <Card className="bg-dashboard-card border-dashboard-accent1/20 rounded-lg">
       <div className="p-6">
         <h2 className="text-xl font-medium text-white mb-4">Payment History & Approvals</h2>
-        <div className="rounded-md border border-white/10">
-          <Table>
-            <PaymentTableHeader />
-            <TableBody>
-              {payments.map((payment) => (
-                <PaymentTableRow
-                  key={payment.id}
-                  payment={payment}
-                  onApprove={(id) => handleApproval(id, true)}
-                  onReject={(id) => handleApproval(id, false)}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Accordion type="single" collapsible className="space-y-4">
+          {collectors.map((collectorName) => (
+            <AccordionItem
+              key={collectorName}
+              value={collectorName}
+              className="border border-white/10 rounded-lg overflow-hidden"
+            >
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium">{collectorName}</span>
+                    <span className="text-sm text-gray-400">
+                      ({groupedPayments[collectorName].length} payments)
+                    </span>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="rounded-md border border-white/10">
+                  <Table>
+                    <PaymentTableHeader />
+                    <TableBody>
+                      {groupedPayments[collectorName].map((payment) => (
+                        <PaymentTableRow
+                          key={payment.id}
+                          payment={payment}
+                          onApprove={(id) => handleApproval(id, true)}
+                          onReject={(id) => handleApproval(id, false)}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </Card>
   );

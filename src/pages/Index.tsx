@@ -6,11 +6,11 @@ import MembersList from '@/components/MembersList';
 import MemberSearch from '@/components/MemberSearch';
 import SystemToolsView from '@/components/SystemToolsView';
 import CollectorFinancialsView from '@/components/CollectorFinancialsView';
-import PlanningView from '@/components/planning/PlanningView';
 import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from '@/components/layout/MainLayout';
 import { useQueryClient } from '@tanstack/react-query';
+import InvalidateRolesButton from '@/components/debug/InvalidateRolesButton';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -105,7 +105,17 @@ const Index = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView />;
+        return (
+          <>
+            <DashboardView />
+            {/* Debug button - only show in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-8 max-w-md mx-auto">
+                <InvalidateRolesButton />
+              </div>
+            )}
+          </>
+        );
       case 'users':
         return (
           <>
@@ -124,8 +134,6 @@ const Index = () => {
         return <CollectorFinancialsView />;
       case 'system':
         return <SystemToolsView />;
-      case 'planning':
-        return <PlanningView />;
       default:
         return null;
     }
