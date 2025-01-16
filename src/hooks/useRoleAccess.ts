@@ -3,6 +3,7 @@ import { useRoleStore } from '@/store/roleStore';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMemo } from 'react';
 
 export type UserRole = Database['public']['Enums']['app_role'];
 
@@ -18,6 +19,10 @@ interface RoleState {
     canViewAudit: boolean;
     canManageCollectors: boolean;
   };
+  setUserRole: (role: UserRole | null) => void;
+  setUserRoles: (roles: UserRole[] | null) => void;
+  setIsLoading: (loading: boolean) => void;
+  setError: (error: Error | null) => void;
 }
 
 export const useRoleAccess = () => {
@@ -32,15 +37,9 @@ export const useRoleAccess = () => {
     setUserRoles,
     setIsLoading,
     setError
-  } = useRoleStore() as RoleState & {
-    setUserRole: (role: UserRole | null) => void;
-    setUserRoles: (roles: UserRole[] | null) => void;
-    setIsLoading: (loading: boolean) => void;
-    setError: (error: Error | null) => void;
-  };
+  } = useRoleStore() as RoleState;
 
-  // Query to fetch user roles with improved error handling and logging
-  useQuery({
+  const { data } = useQuery({
     queryKey: ['userRoles'],
     queryFn: async () => {
       console.log('Fetching user roles - start');
@@ -61,21 +60,13 @@ export const useRoleAccess = () => {
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', session.user.id);
+          .eq('user_id', session.user.id)
+          .throwOnError();
 
-        if (rolesError) {
-          console.error('Error fetching roles:', rolesError);
-          toast({
-            title: "Error fetching roles",
-            description: "There was a problem loading your access permissions.",
-            variant: "destructive",
-          });
-          throw rolesError;
-        }
+        if (rolesError) throw rolesError;
 
         const userRoles = roles?.map(r => r.role as UserRole) || ['member'];
-        console.log('Fetched roles:', userRoles);
-
+        
         // Set primary role (admin > collector > member)
         const primaryRole = userRoles.includes('admin' as UserRole) 
           ? 'admin' as UserRole 
@@ -89,6 +80,11 @@ export const useRoleAccess = () => {
       } catch (error: any) {
         console.error('Role fetch error:', error);
         setError(error);
+        toast({
+          title: "Error fetching roles",
+          description: "There was a problem loading your access permissions.",
+          variant: "destructive",
+        });
         throw error;
       } finally {
         setIsLoading(false);
@@ -96,21 +92,21 @@ export const useRoleAccess = () => {
     },
     retry: 1,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnMount: false, // Only fetch once on mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 
-  const hasRole = (role: UserRole): boolean => {
-    console.log('Checking role:', { role, userRole, userRoles });
+  // Memoize role checking functions to prevent unnecessary re-renders
+  const hasRole = useMemo(() => (role: UserRole): boolean => {
     if (!userRoles) return false;
     return userRoles.includes(role);
-  };
+  }, [userRoles]);
 
-  const hasAnyRole = (roles: UserRole[]): boolean => {
+  const hasAnyRole = useMemo(() => (roles: UserRole[]): boolean => {
     return roles.some(role => hasRole(role));
-  };
+  }, [hasRole]);
 
-  const canAccessTab = (tab: string): boolean => {
+  const canAccessTab = useMemo(() => (tab: string): boolean => {
     if (!userRoles) return false;
 
     switch (tab) {
@@ -125,7 +121,7 @@ export const useRoleAccess = () => {
       default:
         return false;
     }
-  };
+  }, [hasRole, userRoles]);
 
   return {
     userRole,
