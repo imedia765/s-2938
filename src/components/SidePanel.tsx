@@ -23,9 +23,15 @@ interface SidePanelProps {
 
 const SidePanel = ({ onTabChange }: SidePanelProps) => {
   const { handleSignOut } = useAuthSession();
-  const { userRole, userRoles, roleLoading } = useRoleAccess();
+  const { userRole, userRoles, roleLoading, hasRole } = useRoleAccess();
   const { toast } = useToast();
   
+  console.log('SidePanel render state:', {
+    userRole,
+    userRoles,
+    roleLoading
+  });
+
   const handleLogoutClick = async () => {
     try {
       await handleSignOut(false);
@@ -68,11 +74,11 @@ const SidePanel = ({ onTabChange }: SidePanelProps) => {
       case 'dashboard':
         return true;
       case 'users':
-        return userRoles.includes('admin') || userRoles.includes('collector');
+        return hasRole('admin') || hasRole('collector');
       case 'financials':
-        return userRoles.includes('admin') || userRoles.includes('collector');
+        return hasRole('admin') || hasRole('collector');
       case 'system':
-        return userRoles.includes('admin');
+        return hasRole('admin');
       default:
         return false;
     }
@@ -89,19 +95,19 @@ const SidePanel = ({ onTabChange }: SidePanelProps) => {
       name: 'Members',
       icon: Users,
       tab: 'users',
-      requiresRole: ['admin', 'collector']
+      requiresRole: ['admin', 'collector'] as UserRole[]
     },
     {
       name: 'Collectors & Financials',
       icon: Wallet,
       tab: 'financials',
-      requiresRole: ['admin', 'collector']
+      requiresRole: ['admin', 'collector'] as UserRole[]
     },
     {
       name: 'System',
       icon: Settings,
       tab: 'system',
-      requiresRole: ['admin']
+      requiresRole: ['admin'] as UserRole[]
     }
   ];
 
@@ -125,8 +131,9 @@ const SidePanel = ({ onTabChange }: SidePanelProps) => {
                 key={item.tab}
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start gap-2 text-sm",
-                  "hover:bg-dashboard-hover/10 hover:text-white"
+                  "w-full justify-start gap-2 text-sm font-medium",
+                  "hover:bg-dashboard-hover/10 hover:text-white",
+                  "transition-colors duration-200"
                 )}
                 onClick={() => handleTabChange(item.tab)}
                 disabled={roleLoading}
