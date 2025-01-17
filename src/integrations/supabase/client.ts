@@ -11,6 +11,15 @@ export const handleSupabaseError = (error: any) => {
     return new Error('Unable to connect to the server. Please check your internet connection and try again.');
   }
   
+  if (error.message?.includes('Invalid API key')) {
+    console.error('API Key error:', { 
+      url: supabaseUrl,
+      keyLength: supabaseAnonKey.length,
+      error 
+    });
+    return new Error('Authentication error. Please check API configuration.');
+  }
+  
   return new Error(error.message || 'An error occurred with the database operation');
 };
 
@@ -25,7 +34,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'lovable-dashboard'
+      'x-application-name': 'lovable-dashboard',
+      'apikey': supabaseAnonKey
     }
   },
   db: {
