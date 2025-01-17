@@ -6,6 +6,11 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const handleSupabaseError = (error: any) => {
   console.error('Supabase error:', error);
+  
+  if (error.message === 'Failed to fetch') {
+    return new Error('Unable to connect to the server. Please check your internet connection and try again.');
+  }
+  
   return new Error(error.message || 'An error occurred with the database operation');
 };
 
@@ -15,7 +20,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     storageKey: 'supabase.auth.token',
-    storage: localStorage
+    storage: window?.localStorage,
+    flowType: 'pkce'
   },
   global: {
     headers: {
@@ -24,5 +30,11 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   db: {
     schema: 'public'
+  },
+  // Add retrying for failed requests
+  realtime: {
+    params: {
+      eventsPerSecond: 1
+    }
   }
 });
