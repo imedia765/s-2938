@@ -1,6 +1,7 @@
-import { Search } from 'lucide-react';
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Database } from "@/integrations/supabase/types";
 
 type UserRole = Database['public']['Enums']['app_role'];
@@ -14,8 +15,8 @@ interface RoleManagementHeaderProps {
   filteredCount: number;
 }
 
-const RoleManagementHeader = ({ 
-  searchTerm, 
+const RoleManagementHeader = ({
+  searchTerm,
   onSearchChange,
   selectedRole,
   onRoleChange,
@@ -24,44 +25,39 @@ const RoleManagementHeader = ({
 }: RoleManagementHeaderProps) => {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="text-white">
-            <span className="font-medium">Total Members:</span>{' '}
-            <span className="text-dashboard-accent1">{totalCount}</span>
-          </div>
-          {searchTerm && (
-            <div className="text-white">
-              <span className="font-medium">Found:</span>{' '}
-              <span className="text-dashboard-accent1">{filteredCount}</span>
-            </div>
-          )}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold text-white">Role Management</h2>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-dashboard-text">
+            {filteredCount} / {totalCount} Users
+          </Badge>
+        </div>
+      </div>
+
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9"
+          />
         </div>
         <Select
           value={selectedRole}
           onValueChange={(value) => onRoleChange(value as UserRole | 'all')}
         >
-          <SelectTrigger className="w-[180px] bg-dashboard-card/50 border-dashboard-cardBorder text-white">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
-          <SelectContent className="bg-dashboard-card border-dashboard-cardBorder">
-            <SelectItem value="all" className="text-white hover:bg-dashboard-card/80">All Roles</SelectItem>
-            <SelectItem value="admin" className="text-white hover:bg-dashboard-card/80">Admin</SelectItem>
-            <SelectItem value="collector" className="text-white hover:bg-dashboard-card/80">Collector</SelectItem>
-            <SelectItem value="member" className="text-white hover:bg-dashboard-card/80">Member</SelectItem>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="collector">Collector</SelectItem>
+            <SelectItem value="member">Member</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dashboard-muted h-4 w-4" />
-        <Input
-          type="text"
-          placeholder="Search by name or member number..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 bg-dashboard-card/50 border-dashboard-cardBorder text-white placeholder:text-dashboard-muted focus:border-dashboard-accent1"
-        />
       </div>
     </div>
   );
