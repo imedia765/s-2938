@@ -18,6 +18,9 @@ import CollectorRoleCard from './CollectorRoleCard';
 import RoleManagementDropdown from './RoleManagementDropdown';
 import EnhancedRoleSection from './EnhancedRoleSection';
 import SyncStatusIndicator from './SyncStatusIndicator';
+import { Database } from "@/integrations/supabase/types";
+
+type UserRole = Database['public']['Enums']['app_role'];
 
 const CollectorRolesList = () => {
   const { toast } = useToast();
@@ -85,9 +88,9 @@ const CollectorRolesList = () => {
     );
   }
 
-  const handleSync = async (collectorId: string) => {
+  const handleSync = async (collector: { roles: UserRole[] }) => {
     try {
-      await syncRoles(collectorId);
+      await syncRoles(collector.roles);
       toast({
         title: "Roles synchronized",
         description: "The collector's roles have been synchronized successfully.",
@@ -138,7 +141,7 @@ const CollectorRolesList = () => {
               <TableCell>
                 <SyncStatusIndicator
                   collector={collector}
-                  onSync={() => handleSync(collector.id)}
+                  onSync={() => handleSync(collector)}
                   syncStatus={syncStatus}
                 />
               </TableCell>
