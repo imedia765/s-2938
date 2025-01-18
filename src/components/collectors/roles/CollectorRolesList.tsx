@@ -85,6 +85,22 @@ const CollectorRolesList = () => {
     );
   }
 
+  const handleSync = async (collectorId: string) => {
+    try {
+      await syncRoles(collectorId);
+      toast({
+        title: "Roles synchronized",
+        description: "The collector's roles have been synchronized successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Sync failed",
+        description: "Failed to synchronize roles. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="p-6">
       <Table>
@@ -122,7 +138,7 @@ const CollectorRolesList = () => {
               <TableCell>
                 <SyncStatusIndicator
                   collector={collector}
-                  onSync={() => syncRoles()}
+                  onSync={() => handleSync(collector.id)}
                   syncStatus={syncStatus}
                 />
               </TableCell>
