@@ -30,11 +30,12 @@ const RoleSelect = ({
         className={cn(
           "w-[140px] h-9 bg-dashboard-card border-dashboard-cardBorder",
           "hover:bg-dashboard-cardHover transition-colors",
+          "focus:ring-dashboard-accent1",
           "flex items-center gap-2"
         )}
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin text-dashboard-accent1" />
         ) : (
           <Shield className={cn(
             "w-4 h-4",
@@ -46,15 +47,15 @@ const RoleSelect = ({
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="bg-dashboard-card border-dashboard-cardBorder">
-        <SelectItem value="admin" className="flex items-center gap-2">
+        <SelectItem value="admin" className="flex items-center gap-2 text-dashboard-text hover:text-white">
           <Shield className="w-4 h-4 text-dashboard-accent1" />
           Admin
         </SelectItem>
-        <SelectItem value="collector" className="flex items-center gap-2">
+        <SelectItem value="collector" className="flex items-center gap-2 text-dashboard-text hover:text-white">
           <Shield className="w-4 h-4 text-dashboard-accent2" />
           Collector
         </SelectItem>
-        <SelectItem value="member" className="flex items-center gap-2">
+        <SelectItem value="member" className="flex items-center gap-2 text-dashboard-text hover:text-white">
           <Shield className="w-4 h-4 text-dashboard-accent3" />
           Member
         </SelectItem>

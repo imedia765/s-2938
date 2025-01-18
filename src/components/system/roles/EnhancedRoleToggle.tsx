@@ -29,11 +29,14 @@ const EnhancedRoleToggle = ({
           disabled={disabled}
           className={cn(
             "data-[state=checked]:bg-dashboard-accent1",
-            "data-[state=unchecked]:bg-dashboard-card"
+            "data-[state=unchecked]:bg-dashboard-card",
+            "focus:ring-dashboard-accent1"
           )}
         />
       )}
-      <Label className="text-dashboard-text">{roleName}</Label>
+      <Label className="text-dashboard-text hover:text-white transition-colors">
+        {roleName}
+      </Label>
     </div>
   );
 };
