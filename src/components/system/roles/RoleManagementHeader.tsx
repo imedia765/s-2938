@@ -53,7 +53,7 @@ const RoleManagementHeader = ({
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-dashboard-card border-dashboard-cardBorder"
+            className="pl-9 bg-dashboard-card border-dashboard-cardBorder focus:ring-dashboard-accent1"
           />
         </div>
         <Select
@@ -63,7 +63,7 @@ const RoleManagementHeader = ({
           <SelectTrigger className="w-[180px] bg-dashboard-card border-dashboard-cardBorder">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-dashboard-card border-dashboard-cardBorder">
             <SelectItem value="all" className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-dashboard-accent1" />
               All Roles
