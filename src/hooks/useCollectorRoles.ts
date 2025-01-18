@@ -11,6 +11,12 @@ interface RoleUpdateParams {
   action: 'add' | 'remove';
 }
 
+interface EnhancedRoleUpdateParams {
+  userId: string;
+  roleName: string;
+  isActive: boolean;
+}
+
 export const useCollectorRoles = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,7 +59,43 @@ export const useCollectorRoles = () => {
     }
   });
 
+  const updateEnhancedRoleMutation = useMutation({
+    mutationFn: async ({ userId, roleName, isActive }: EnhancedRoleUpdateParams) => {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const { error } = await supabase
+        .from('enhanced_roles')
+        .upsert({
+          user_id: userId,
+          role_name: roleName,
+          is_active: isActive,
+          updated_by: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (error) throw error;
+    },
+    meta: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['collectors-roles'] });
+        toast({
+          title: "Enhanced role updated",
+          description: "The collector's enhanced roles have been updated successfully.",
+        });
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error updating enhanced role",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+  });
+
   return {
-    updateRoleMutation
+    updateRoleMutation,
+    updateEnhancedRoleMutation
   };
 };
