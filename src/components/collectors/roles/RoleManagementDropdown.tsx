@@ -1,11 +1,13 @@
 import { Shield } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useCollectorRoles } from "@/hooks/useCollectorRoles";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { Database } from "@/integrations/supabase/types";
 
 type UserRole = Database['public']['Enums']['app_role'];
@@ -19,6 +21,32 @@ interface RoleManagementDropdownProps {
 }
 
 const RoleManagementDropdown = ({ collector, onRoleUpdate }: RoleManagementDropdownProps) => {
+  const { toast } = useToast();
+  const { updateRoleMutation } = useCollectorRoles();
+
+  const handleRoleUpdate = async (role: UserRole, action: 'add' | 'remove') => {
+    try {
+      await updateRoleMutation.mutateAsync({
+        userId: collector.auth_user_id,
+        role,
+        action
+      });
+
+      toast({
+        title: `Role ${action === 'add' ? 'added' : 'removed'}`,
+        description: `Successfully ${action === 'add' ? 'added' : 'removed'} ${role} role.`,
+      });
+
+      onRoleUpdate(role, action);
+    } catch (error) {
+      toast({
+        title: "Error updating role",
+        description: error instanceof Error ? error.message : "An error occurred while updating the role",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -29,7 +57,7 @@ const RoleManagementDropdown = ({ collector, onRoleUpdate }: RoleManagementDropd
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          onClick={() => onRoleUpdate('collector', collector.roles.includes('collector') ? 'remove' : 'add')}
+          onClick={() => handleRoleUpdate('collector', collector.roles.includes('collector') ? 'remove' : 'add')}
         >
           {collector.roles.includes('collector') ? 'Remove Collector Role' : 'Add Collector Role'}
         </DropdownMenuItem>
