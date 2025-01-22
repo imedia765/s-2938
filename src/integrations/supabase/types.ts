@@ -90,6 +90,33 @@ export type Database = {
         }
         Relationships: []
       }
+      collector_role_fix_log: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          member_number: string
+          status: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          member_number: string
+          status: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          member_number?: string
+          status?: string
+        }
+        Relationships: []
+      }
       documentation: {
         Row: {
           created_at: string
