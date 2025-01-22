@@ -900,6 +900,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_auth_users_for_collectors: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_family_member_number: {
         Args: {
           p_parent_member_number: string
