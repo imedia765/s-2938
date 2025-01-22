@@ -7,16 +7,27 @@ import { Shield, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface RoleFixReport {
+  total_processed: number;
+  successful: number;
+  failed: number;
+  failure_details: Array<{
+    member_number: string;
+    error: string;
+  }>;
+}
+
 const RoleMaintenanceControls = () => {
   const [isRunning, setIsRunning] = useState(false);
   const { toast } = useToast();
 
-  const { data: report, refetch } = useQuery({
+  const { data: reportData, refetch } = useQuery({
     queryKey: ['collector-role-report'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_collector_role_fix_report');
       if (error) throw error;
-      return data;
+      // The function returns a single row, so we take the first element
+      return data[0] as RoleFixReport;
     }
   });
 
@@ -66,26 +77,26 @@ const RoleMaintenanceControls = () => {
         </Button>
       </div>
 
-      {report && (
+      {reportData && (
         <div className="space-y-2">
           <div className="flex gap-2">
             <Badge variant="outline" className="bg-dashboard-accent1/10">
-              Total: {report.total_processed}
+              Total: {reportData.total_processed}
             </Badge>
             <Badge variant="outline" className="bg-green-500/10 text-green-400">
-              Success: {report.successful}
+              Success: {reportData.successful}
             </Badge>
-            {report.failed > 0 && (
+            {reportData.failed > 0 && (
               <Badge variant="outline" className="bg-red-500/10 text-red-400">
-                Failed: {report.failed}
+                Failed: {reportData.failed}
               </Badge>
             )}
           </div>
-          {report.failed > 0 && report.failure_details && (
+          {reportData.failed > 0 && reportData.failure_details && (
             <div className="mt-4 text-sm text-dashboard-muted">
               <p className="font-medium mb-2">Failed Operations:</p>
               <ul className="list-disc pl-4 space-y-1">
-                {report.failure_details.map((detail: any, index: number) => (
+                {reportData.failure_details.map((detail, index) => (
                   <li key={index} className="text-red-400">
                     {detail.member_number}: {detail.error}
                   </li>
