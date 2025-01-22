@@ -480,6 +480,7 @@ export type Database = {
       members_collectors: {
         Row: {
           active: boolean | null
+          auth_user_id: string | null
           created_at: string
           email: string | null
           id: string
@@ -492,6 +493,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          auth_user_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -504,6 +506,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          auth_user_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
