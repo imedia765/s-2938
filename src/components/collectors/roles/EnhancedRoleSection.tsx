@@ -1,13 +1,9 @@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Collector } from "@/types/collector";
 
 interface EnhancedRoleSectionProps {
-  collector: {
-    enhanced_roles: Array<{
-      role_name: string;
-      is_active: boolean;
-    }>;
-  };
+  collector: Collector;
   onEnhancedRoleUpdate: (roleName: string, isActive: boolean) => void;
 }
 

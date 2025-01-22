@@ -283,6 +283,41 @@ export type Database = {
           },
         ]
       }
+      member_notes: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          note_text: string
+          note_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          note_text: string
+          note_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          note_text?: string
+          note_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_notes_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           address: string | null
@@ -452,7 +487,15 @@ export type Database = {
           prefix?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "members_collectors_member_number_fkey"
+            columns: ["member_number"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["member_number"]
+          },
+        ]
       }
       monitoring_logs: {
         Row: {
@@ -589,7 +632,9 @@ export type Database = {
           id: string
           new_value: Json | null
           old_value: Json | null
+          role: Database["public"]["Enums"]["app_role"] | null
           role_id: string | null
+          user_id: string | null
         }
         Insert: {
           change_type?: string | null
@@ -598,7 +643,9 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           role_id?: string | null
+          user_id?: string | null
         }
         Update: {
           change_type?: string | null
@@ -607,17 +654,11 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           role_id?: string | null
+          user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "role_history_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "user_roles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       sync_status: {
         Row: {
@@ -877,12 +918,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin_user: {
-        Args: {
-          user_uid: string
-        }
-        Returns: boolean
-      }
       is_payment_overdue: {
         Args: {
           due_date: string
@@ -926,7 +961,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "collector" | "member"
-      audit_operation: "create" | "update" | "delete"
+      audit_operation:
+        | "create"
+        | "update"
+        | "delete"
+        | "INSERT"
+        | "UPDATE"
+        | "DELETE"
       backup_operation_type: "backup" | "restore"
       monitoring_event_type:
         | "system_performance"
