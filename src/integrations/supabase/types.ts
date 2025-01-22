@@ -864,6 +864,12 @@ export type Database = {
           details: Json
         }[]
       }
+      create_auth_user_for_collector: {
+        Args: {
+          member_num: string
+        }
+        Returns: string
+      }
       generate_family_member_number: {
         Args: {
           p_parent_member_number: string
@@ -885,6 +891,15 @@ export type Database = {
           hour_bucket: string
           operation: string
           count: number
+        }[]
+      }
+      get_collector_role_fix_report: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_processed: number
+          successful: number
+          failed: number
+          failure_details: Json
         }[]
       }
       get_rls_policies: {
@@ -923,6 +938,16 @@ export type Database = {
           due_date: string
         }
         Returns: boolean
+      }
+      is_valid_member_number: {
+        Args: {
+          member_num: string
+        }
+        Returns: boolean
+      }
+      maintain_collector_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       perform_user_roles_sync: {
         Args: Record<PropertyKey, never>
