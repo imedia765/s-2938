@@ -97,7 +97,7 @@ export type Database = {
           error_message: string | null
           id: string
           member_number: string
-          status: string
+          status: Database["public"]["Enums"]["collector_role_status"] | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -105,7 +105,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           member_number: string
-          status: string
+          status?: Database["public"]["Enums"]["collector_role_status"] | null
         }
         Update: {
           auth_user_id?: string | null
@@ -113,7 +113,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           member_number?: string
-          status?: string
+          status?: Database["public"]["Enums"]["collector_role_status"] | null
         }
         Relationships: []
       }
@@ -1028,6 +1028,12 @@ export type Database = {
         | "UPDATE"
         | "DELETE"
       backup_operation_type: "backup" | "restore"
+      collector_role_status:
+        | "started"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "created"
       monitoring_event_type:
         | "system_performance"
         | "api_latency"
